@@ -1,0 +1,70 @@
+﻿@page
+@model ReportSystem.Pages.Admin.IndexModel
+@{
+    ViewData["Title"] = "Index";
+}
+<div class="container py-4">
+    <div class="row mb-3">
+        <div class="col-12">
+            <h5 class="fw-bold">Follow-Up Menu</h5>
+        </div>
+    </div>
+    <div class="row g-3">
+        <!-- Machine Report Follow-Up -->
+        <div class="col-6 col-md-3">
+            <a href="/Admin/FollowUp/Machine" class="card border-0 shadow-sm text-decoration-none h-100">
+                <div class="card-img-top d-flex align-items-center justify-content-center bg-success bg-opacity-10 p-4" style="height: 160px;">
+                    <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/2699.svg"
+                         alt="Machine Report"
+                         style="height: 90px; width: 90px; object-fit: contain;">
+                </div>
+                <div class="card-body p-3">
+                    <h6 class="card-title fw-bold text-dark mb-0">Machine Report</h6>
+                    <small class="text-muted">Follow up machine issues</small>
+                </div>
+            </a>
+        </div>
+        <!-- Near-Miss Follow-Up -->
+        <div class="col-6 col-md-3">
+            <a href="/Admin/FollowUp/NearMiss" class="card border-0 shadow-sm text-decoration-none h-100">
+                <div class="card-img-top d-flex align-items-center justify-content-center bg-warning bg-opacity-10 p-4" style="height: 160px;">
+                    <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/26a0.svg"
+                         alt="Near-Miss Report"
+                         style="height: 90px; width: 90px; object-fit: contain;">
+                </div>
+                <div class="card-body p-3">
+                    <h6 class="card-title fw-bold text-dark mb-0">Near-Miss Report</h6>
+                    <small class="text-muted">Follow up close-call incidents</small>
+                </div>
+            </a>
+        </div>
+        <!-- Suggestion Follow-Up -->
+        <div class="col-6 col-md-3">
+            <a href="/Admin/FollowUp/Suggestion" class="card border-0 shadow-sm text-decoration-none h-100">
+                <div class="card-img-top d-flex align-items-center justify-content-center bg-info bg-opacity-10 p-4" style="height: 160px;">
+                    <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f4a1.svg"
+                         alt="Suggestion"
+                         style="height: 90px; width: 90px; object-fit: contain;">
+                </div>
+                <div class="card-body p-3">
+                    <h6 class="card-title fw-bold text-dark mb-0">Suggestion</h6>
+                    <small class="text-muted">Follow up on ideas</small>
+                </div>
+            </a>
+        </div>
+        <!-- Kaizen Follow-Up -->
+        <div class="col-6 col-md-3">
+            <a href="/Admin/FollowUp/Kaizen" class="card border-0 shadow-sm text-decoration-none h-100">
+                <div class="card-img-top d-flex align-items-center justify-content-center bg-primary bg-opacity-10 p-4" style="height: 160px;">
+                    <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f4c8.svg"
+                         alt="Kaizen Report"
+                         style="height: 90px; width: 90px; object-fit: contain;">
+                </div>
+                <div class="card-body p-3">
+                    <h6 class="card-title fw-bold text-dark mb-0">Kaizen Report</h6>
+                    <small class="text-muted">Follow up improvements</small>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>

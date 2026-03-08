@@ -1,0 +1,31 @@
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace ReportSystem.Models
+{
+    [Table("MASTER_FOLLOW_UP")]
+    public class MasterFollowUp
+    {
+        [Key]
+        [Column("FOLLOW_UP_ID")]
+        public int FollowUpId { get; set; }
+
+        [Column("REPORT_ID")]
+        public int ReprotId { get; set; }
+
+        [Column("FOLLOW_UP_DATE")]
+        public DateTime FollowUpDate { get; set; }
+
+        [Column("RESPONSIBLE_PERSON")]
+        public string ResponsiblePerson { get; set; }
+
+        [Column("MATERIALS_USED")]
+        public string MaterialsUsed { get; set; }
+
+        [Column("DESCRIPTION")]
+        public string Description { get; set; }
+
+        [Column("UPDATED_BY")]
+        public int UpdatedBy { get; set; } // Fetch user ID from MASTER_USER table.
+    }
+}

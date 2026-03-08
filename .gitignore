@@ -361,3 +361,23 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+##########################
+# ASP.NET Core / Azure
+##########################
+
+# Sensitive config files - NEVER commit these
+appsettings.json
+secrets.json
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Azure publish profiles
+*.pubxml.user
+
+# JetBrains Rider
+.idea/
+*.sln.iml

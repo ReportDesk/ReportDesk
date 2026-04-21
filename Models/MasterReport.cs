@@ -10,6 +10,9 @@ namespace ReportSystem.Models
         [Column("REPORT_ID")]
         public int ReportId { get; set; }
 
+        [Column("REPORT_TYPE")]
+        public string ReportType { get; set; } // Add this to the Database table
+
         [Column("TITLE")]
         public string ReportTitle { get; set; }
 

@@ -20,6 +20,9 @@ namespace ReportSystem.Pages.Admin
         [BindProperty(SupportsGet = true)]
         public bool StatusClose { get; set; }
 
+        [BindProperty(SupportsGet = true)]
+        public bool StatusDone { get; set; }
+
         public List<ReportRowViewModel> ReportRows { get; private set; } = new();
 
         public void OnGet()

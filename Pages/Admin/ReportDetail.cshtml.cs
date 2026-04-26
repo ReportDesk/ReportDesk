@@ -1,17 +1,32 @@
 using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
+using ReportSystem.Services;
 
 namespace ReportSystem.Pages.Admin
 {
     public class ReportDetailModel : PageModel
     {
+        private readonly AppDbContext _db;
+        private readonly ReportService _reportService;
+
+        public ReportDetailModel(AppDbContext db, ReportService reportService)
+        {
+            _db = db;
+            _reportService = reportService;
+        }
+
         [BindProperty(SupportsGet = true)]
         public int ReportId { get; set; }
 
         public string ReportDateText { get; private set; } = string.Empty;
+        public string ReportTitle { get; private set; } = string.Empty;
+        public string ReportType { get; private set; } = string.Empty;
+        public string ReportedBy { get; private set; } = string.Empty;
+        public string ReportArea { get; private set; } = string.Empty;
         public string ReportDescription { get; private set; } = string.Empty;
+        public List<AttachmentViewModel> Attachments { get; private set; } = new();
 
         [BindProperty]
         [Required(ErrorMessage = "Status is required.")]
@@ -31,79 +46,82 @@ namespace ReportSystem.Pages.Admin
         [TempData]
         public string? SuccessMessage { get; set; }
 
-        public IActionResult OnGet()
+        public async Task<IActionResult> OnGetAsync(CancellationToken cancellationToken)
         {
-            var report = FindMockReport(ReportId);
-            if (report is null)
-            {
-                return NotFound();
-            }
-
-            ReportDateText = report.DateText;
-            ReportDescription = report.Description;
-            SelectedStatus = report.Status;
-            return Page();
+            return await LoadReportAsync(cancellationToken) ? Page() : NotFound();
         }
 
-        public IActionResult OnPost()
+        public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken)
         {
-            var report = FindMockReport(ReportId);
-            if (report is null)
+            if (!await LoadReportAsync(cancellationToken))
             {
                 return NotFound();
             }
-
-            ReportDateText = report.DateText;
-            ReportDescription = report.Description;
 
             if (!ModelState.IsValid)
             {
                 return Page();
             }
 
-            SuccessMessage = "Follow up saved (mock only, no database write).";
+            try
+            {
+                await _reportService.UpdateFollowUpAsync(ReportId, new FollowUpRequest
+                {
+                    Status = SelectedStatus,
+                    Name = FollowUpName,
+                    Description = FollowUpDescription,
+                    Photo = FollowUpPhoto
+                }, cancellationToken);
+            }
+            catch (InvalidOperationException ex)
+            {
+                ModelState.AddModelError(string.Empty, ex.Message);
+                return Page();
+            }
+
+            SuccessMessage = "Follow up saved.";
             return RedirectToPage("/Admin/ReportDetail", new { reportId = ReportId });
         }
 
-        private static MockReport? FindMockReport(int reportId)
+        private async Task<bool> LoadReportAsync(CancellationToken cancellationToken)
         {
-            return GetMockReports().FirstOrDefault(x => x.ReportId == reportId);
-        }
+            var report = await _db.MasterReports
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.ReportId == ReportId, cancellationToken);
 
-        private static List<MockReport> GetMockReports()
-        {
-            return new List<MockReport>
+            if (report is null)
             {
-                new()
+                return false;
+            }
+
+            ReportDateText = report.SubmissionDate.ToString("yyyy-MM-dd HH:mm");
+            ReportTitle = report.ReportTitle;
+            ReportType = report.ReportType;
+            ReportedBy = report.ReportedBy;
+            ReportArea = report.Area;
+            ReportDescription = report.Description;
+            SelectedStatus = string.IsNullOrWhiteSpace(SelectedStatus) ? report.Status : SelectedStatus;
+
+            Attachments = await _db.Attachments
+                .AsNoTracking()
+                .Where(x => x.ReportId == ReportId)
+                .OrderBy(x => x.UploadDate)
+                .Select(x => new AttachmentViewModel
                 {
-                    ReportId = 101,
-                    DateText = "2026-03-25",
-                    Status = "Open",
-                    Description = "Conveyor alarm triggered repeatedly during shift handover."
-                },
-                new()
-                {
-                    ReportId = 102,
-                    DateText = "2026-03-24",
-                    Status = "On Progress",
-                    Description = "Oil leak observed near pump seal on Machine A2."
-                },
-                new()
-                {
-                    ReportId = 103,
-                    DateText = "2026-03-22",
-                    Status = "Close",
-                    Description = "Safety guard improvement proposal submitted by assembly team."
-                }
-            };
+                    FileName = x.FileName,
+                    FilePath = x.FilePath,
+                    UploadDateText = x.UploadDate.ToString("yyyy-MM-dd HH:mm")
+                })
+                .ToListAsync(cancellationToken);
+
+            return true;
         }
 
-        private sealed class MockReport
+        public sealed class AttachmentViewModel
         {
-            public int ReportId { get; set; }
-            public string DateText { get; set; } = string.Empty;
-            public string Status { get; set; } = string.Empty;
-            public string Description { get; set; } = string.Empty;
+            public string FileName { get; set; } = string.Empty;
+            public string FilePath { get; set; } = string.Empty;
+            public string UploadDateText { get; set; } = string.Empty;
         }
     }
 }

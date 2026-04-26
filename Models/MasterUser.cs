@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ReportSystem.Models
@@ -11,16 +11,16 @@ namespace ReportSystem.Models
         public int UserId { get; set; }
 
         [Column("USERNAME")]
-        public string Username { get; set; }
+        public string Username { get; set; } = string.Empty;
 
         [Column("EMAIL")]
-        public string Email { get; set; }
+        public string Email { get; set; } = string.Empty;
 
         [Column("PASSWORD")]
-        public string Password { get; set; }
+        public string Password { get; set; } = string.Empty;
 
         [Column("ROLE")]
-        public string Role { get; set; }
+        public string Role { get; set; } = string.Empty;
 
         [Column("CREATED_DATE")]
         public DateTime CreatedDate { get; set; }

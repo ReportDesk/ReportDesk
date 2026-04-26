@@ -1,19 +1,18 @@
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace ReportSystem.Pages
 {
     public class ReportFormModel : PageModel
     {
-        public string CurrentTimeDisplay { get; private set; } = string.Empty;
-
-        public void OnGet()
+        public IActionResult OnGet()
         {
-            CurrentTimeDisplay = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+            return RedirectToPage("/Report/Machine");
         }
 
-        public void OnPost()
+        public IActionResult OnPost()
         {
-            CurrentTimeDisplay = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+            return RedirectToPage("/Report/Machine");
         }
     }
 }

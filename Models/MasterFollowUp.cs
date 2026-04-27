@@ -11,7 +11,7 @@ namespace ReportSystem.Models
         public int FollowUpId { get; set; }
 
         [Column("REPORT_ID")]
-        public int ReprotId { get; set; }
+        public int ReportId { get; set; }
 
         [Column("FOLLOW_UP_DATE")]
         public DateTime FollowUpDate { get; set; }

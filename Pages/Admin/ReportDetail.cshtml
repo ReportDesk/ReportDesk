@@ -1,0 +1,118 @@
+@page "{reportId:int}"
+@model ReportSystem.Pages.Admin.ReportDetailModel
+@{
+    ViewData["Title"] = "Report Detail";
+}
+
+<div class="container-body">
+    <div class="row mb-3">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <div>
+                <h4 class="fw-bold mb-1">Report Detail</h4>
+                <small class="text-muted">Report ID: @Model.ReportId</small>
+            </div>
+            <a asp-page="/Admin/ReportList" class="btn btn-outline-secondary btn-sm">Back to List</a>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Model.SuccessMessage))
+    {
+        <div class="alert alert-success" role="alert">
+            @Model.SuccessMessage
+        </div>
+    }
+
+    <form method="post" enctype="multipart/form-data">
+        <input type="hidden" asp-for="ReportId" />
+
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-body p-3 p-lg-4">
+                <div class="row g-3">
+                    <div class="col-12 col-lg-8">
+                        <label class="form-label fw-semibold">Title</label>
+                        <input type="text" class="form-control" value="@Model.ReportTitle" readonly />
+                    </div>
+                    <div class="col-12 col-lg-4">
+                        <label class="form-label fw-semibold">Type</label>
+                        <input type="text" class="form-control" value="@Model.ReportType" readonly />
+                    </div>
+                    <div class="col-12 col-lg-4">
+                        <label class="form-label fw-semibold">Date</label>
+                        <input type="text" class="form-control" value="@Model.ReportDateText" readonly />
+                    </div>
+                    <div class="col-12 col-lg-4">
+                        <label class="form-label fw-semibold">Reported By</label>
+                        <input type="text" class="form-control" value="@Model.ReportedBy" readonly />
+                    </div>
+                    <div class="col-12 col-lg-4">
+                        <label class="form-label fw-semibold">Area</label>
+                        <input type="text" class="form-control" value="@Model.ReportArea" readonly />
+                    </div>
+                    <div class="col-12 col-lg-4">
+                        <label class="form-label fw-semibold">Status</label>
+                        <select asp-for="SelectedStatus" class="form-select">
+                            <option value="">Select status</option>
+                            <option value="Open">Open</option>
+                            <option value="On Progress">On Progress</option>
+                            <option value="Close">Close</option>
+                            <option value="Done">Done</option>
+                        </select>
+                        <span asp-validation-for="SelectedStatus" class="text-danger"></span>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Description</label>
+                        <textarea class="form-control" rows="4" readonly>@Model.ReportDescription</textarea>
+                    </div>
+                    @if (Model.Attachments.Count > 0)
+                    {
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Attachments</label>
+                            <div class="list-group">
+                                @foreach (var attachment in Model.Attachments)
+                                {
+                                    <a href="@attachment.FilePath" class="list-group-item list-group-item-action" target="_blank">
+                                        @attachment.FileName
+                                        <small class="text-muted d-block">@attachment.UploadDateText</small>
+                                    </a>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-3 p-lg-4">
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+
+                <div class="row g-3">
+                    <div class="col-12 col-lg-6">
+                        <label asp-for="FollowUpName" class="form-label fw-semibold">Name</label>
+                        <input asp-for="FollowUpName" class="form-control" />
+                        <span asp-validation-for="FollowUpName" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-12">
+                        <label asp-for="FollowUpDescription" class="form-label fw-semibold">Follow Up Description</label>
+                        <textarea asp-for="FollowUpDescription" class="form-control" rows="5"></textarea>
+                        <span asp-validation-for="FollowUpDescription" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-12 col-lg-6">
+                        <label asp-for="FollowUpPhoto" class="form-label fw-semibold">Photo Upload (Optional)</label>
+                        <input asp-for="FollowUpPhoto" type="file" class="form-control" accept="image/*" />
+                    </div>
+
+                    <div class="col-12 d-grid d-md-flex justify-content-md-end">
+                        <button type="submit" class="btn btn-primary">Save</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

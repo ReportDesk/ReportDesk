@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+using ReportSystem.Models;
 
 public class AppDbContext : DbContext
 {
@@ -6,7 +7,9 @@ public class AppDbContext : DbContext
     {
     }
 
-    //public DbSet<Product> Products { get; set; }
-
-    // Add More DB Sets here
+    public DbSet<MasterReport> MasterReports => Set<MasterReport>();
+    public DbSet<MasterMachine> MasterMachines => Set<MasterMachine>();
+    public DbSet<MasterFollowUp> MasterFollowUps => Set<MasterFollowUp>();
+    public DbSet<Attachment> Attachments => Set<Attachment>();
+    public DbSet<MasterUser> MasterUsers => Set<MasterUser>();
 }

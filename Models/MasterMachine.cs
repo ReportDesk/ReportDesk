@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ReportSystem.Models
@@ -11,12 +11,12 @@ namespace ReportSystem.Models
         public int MachineId { get; set; }
 
         [Column("MACHINE_NAME")]
-        public string MachineName { get; set; }
+        public string MachineName { get; set; } = string.Empty;
 
         [Column("CREATED_DATE")]
         public DateTime CreatedDate { get; set; }
 
         [Column("CREATED_ID")]
-        public int CreatedBy { get; set; } // Fetch user ID from MASTER_USER table.
+        public int CreatedBy { get; set; }
     }
 }

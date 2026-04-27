@@ -4,9 +4,12 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorPages();
+builder.Services.AddControllers();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("RDConnectionString")));
+builder.Services.AddScoped<ReportSystem.Services.ReportService>();
+builder.Services.AddScoped<ReportSystem.Services.IImageVirusScanner, ReportSystem.Services.NoOpImageVirusScanner>();
 
 var app = builder.Build();
 
@@ -26,5 +29,6 @@ app.UseRouting();
 app.UseAuthorization();
 
 app.MapRazorPages();
+app.MapControllers();
 
 app.Run();

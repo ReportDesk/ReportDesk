@@ -1,6 +1,10 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+
+// TODO: Add your DbContext using statement, e.g.:
+// using ReportSystem.Data;
+// using Microsoft.EntityFrameworkCore;
 
 namespace ReportSystem.Pages.Admin
 {
@@ -12,6 +16,9 @@ namespace ReportSystem.Pages.Admin
         {
             _db = db;
         }
+
+        [BindProperty(SupportsGet = true)]
+        public string? ReportType { get; set; }
 
         [BindProperty(SupportsGet = true)]
         public DateTime? FromDate { get; set; }
@@ -30,6 +37,8 @@ namespace ReportSystem.Pages.Admin
 
         [BindProperty(SupportsGet = true)]
         public bool StatusDone { get; set; }
+
+        // ── View Data ─────────────────────────────────────────────────────────
 
         public List<ReportRowViewModel> ReportRows { get; private set; } = new();
         public string? LoadError { get; private set; }
@@ -105,9 +114,12 @@ namespace ReportSystem.Pages.Admin
             return statuses;
         }
 
+        // ── View Model ────────────────────────────────────────────────────────
+
         public sealed class ReportRowViewModel
         {
             public int ReportId { get; set; }
+            public string ReportType { get; set; } = string.Empty;
             public string Title { get; set; } = string.Empty;
             public string ReportType { get; set; } = string.Empty;
             public string ReportedBy { get; set; } = string.Empty;

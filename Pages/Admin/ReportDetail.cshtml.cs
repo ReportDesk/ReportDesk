@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +22,16 @@ namespace ReportSystem.Pages.Admin
         [BindProperty(SupportsGet = true)]
         public int ReportId { get; set; }
 
+        // -- Report Display Properties
+
+        public string ReportType { get; private set; } = string.Empty;
+        public string ReportTypeFriendly { get; private set; } = string.Empty;
+        public string TypeBadgeClass { get; private set; } = "bg-secondary";
+
+        public string ReportTitle { get; private set; } = string.Empty;
+        public string ReportedBy { get; private set; } = string.Empty;
+        public string Area { get; private set; } = string.Empty;
+        public string MachineName { get; private set; } = string.Empty;
         public string ReportDateText { get; private set; } = string.Empty;
         public string ReportTitle { get; private set; } = string.Empty;
         public string ReportType { get; private set; } = string.Empty;
@@ -117,7 +129,7 @@ namespace ReportSystem.Pages.Admin
             return true;
         }
 
-        public sealed class AttachmentViewModel
+        private sealed class MockReport
         {
             public string FileName { get; set; } = string.Empty;
             public string FilePath { get; set; } = string.Empty;

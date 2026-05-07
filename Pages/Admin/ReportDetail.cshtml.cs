@@ -1,14 +1,12 @@
 using System.ComponentModel.DataAnnotations;
-using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using ReportSystem.Services;
 
 namespace ReportSystem.Pages.Admin
 {
-    public class ReportDetailModel : PageModel
+    public class ReportDetailModel : AdminPageModel
     {
         private readonly AppDbContext _db;
         private readonly ReportService _reportService;
@@ -21,8 +19,6 @@ namespace ReportSystem.Pages.Admin
 
         [BindProperty(SupportsGet = true)]
         public int ReportId { get; set; }
-
-        // -- Report Display Properties
 
         public string ReportType { get; private set; } = string.Empty;
         public string ReportTypeFriendly { get; private set; } = string.Empty;
@@ -56,11 +52,23 @@ namespace ReportSystem.Pages.Admin
 
         public async Task<IActionResult> OnGetAsync(CancellationToken cancellationToken)
         {
+            var redirect = RedirectIfNotAdmin();
+            if (redirect is not null)
+            {
+                return redirect;
+            }
+
             return await LoadReportAsync(cancellationToken) ? Page() : NotFound();
         }
 
         public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken)
         {
+            var redirect = RedirectIfNotAdmin();
+            if (redirect is not null)
+            {
+                return redirect;
+            }
+
             if (!await LoadReportAsync(cancellationToken))
             {
                 return NotFound();
@@ -110,26 +118,7 @@ namespace ReportSystem.Pages.Admin
             ReportDescription = report.Description;
             SelectedStatus = string.IsNullOrWhiteSpace(SelectedStatus) ? report.Status : SelectedStatus;
 
-            //Attachments = await _db.Attachments
-            //    .AsNoTracking()
-            //    .Where(x => x.ReportId == ReportId)
-            //    .OrderBy(x => x.UploadDate)
-            //    .Select(x => new AttachmentViewModel
-            //    {
-            //        FileName = x.FileName,
-            //        FilePath = x.FilePath,
-            //        UploadDateText = x.UploadDate.ToString("yyyy-MM-dd HH:mm")
-            //    })
-            //    .ToListAsync(cancellationToken);
-
             return true;
-        }
-
-        private sealed class AttachmentReport
-        {
-            public string FileName { get; set; } = string.Empty;
-            public string FilePath { get; set; } = string.Empty;
-            public string UploadDateText { get; set; } = string.Empty;
         }
     }
 }

@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using ReportSystem.Data;
-using System.Net.NetworkInformation;
 
 namespace ReportSystem.Pages
 {
@@ -23,15 +22,20 @@ namespace ReportSystem.Pages
 
         public string? ErrorMessage { get; set; }
 
-        public void OnGet()
+        public IActionResult OnGet()
         {
-            // Redirect already-logged-in users
             if (HttpContext.Session.GetString("UserId") != null)
-                Response.Redirect(GetRedirectUrl(HttpContext.Session.GetString("Role") ?? ""));
+            {
+                return Redirect(GetRedirectUrl(HttpContext.Session.GetString("Role") ?? ""));
+            }
+
+            return Page();
         }
 
         public async Task<IActionResult> OnPostAsync()
         {
+            HttpContext.Session.Clear();
+
             if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password))
             {
                 ErrorMessage = "Please enter your username and password.";
@@ -47,7 +51,6 @@ namespace ReportSystem.Pages
                 return Page();
             }
 
-            // Store Session
             HttpContext.Session.SetString("UserId", user.UserId.ToString());
             HttpContext.Session.SetString("Username", user.Username);
             HttpContext.Session.SetString("Role", user.Role);
@@ -58,7 +61,7 @@ namespace ReportSystem.Pages
         private static string GetRedirectUrl(string role) => role switch
         {
             "Admin" => "/Admin/Index",
-            _       => "/Index"
+            _ => "/Index"
         };
     }
 }

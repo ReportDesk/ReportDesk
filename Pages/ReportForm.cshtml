@@ -1,11 +1,21 @@
 @page
 @model ReportSystem.Pages.ReportFormModel
 @{
-    ViewData["Title"] = "Report Form";
+    ViewData["Title"] = "Choose Report Type";
 }
 
 <div class="container-body">
-    <div class="alert alert-info">
-        Redirecting to Machine Report.
+    <div class="row mb-3">
+        <div class="col-12">
+            <h4 class="fw-bold mb-1">Choose Report Type</h4>
+            <small class="text-muted">Use one of the available report pages below.</small>
+        </div>
+    </div>
+
+    <div class="list-group">
+        <a href="/Report/Machine" class="list-group-item list-group-item-action">Machine Report</a>
+        <a href="/Report/NearMiss" class="list-group-item list-group-item-action">Near-Miss Report</a>
+        <a href="/Report/Suggestion" class="list-group-item list-group-item-action">Suggestion</a>
+        <a href="/Report/Kaizen" class="list-group-item list-group-item-action">Kaizen Report</a>
     </div>
 </div>

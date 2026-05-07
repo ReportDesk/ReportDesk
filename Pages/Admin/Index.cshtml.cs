@@ -1,12 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace ReportSystem.Pages.Admin
 {
-    public class IndexModel : PageModel
+    public class IndexModel : AdminPageModel
     {
-        public void OnGet()
+        public IActionResult OnGet()
         {
+            return RedirectIfNotAdmin() ?? Page();
         }
     }
 }

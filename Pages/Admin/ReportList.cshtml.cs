@@ -72,7 +72,7 @@ namespace ReportSystem.Pages.Admin
                     {
                         ReportId = x.ReportId,
                         Title = x.ReportTitle,
-                        ReportType = x.ReportType,
+                        //ReportType = x.ReportType,
                         ReportedBy = x.ReportedBy,
                         Area = x.Area,
                         SubmissionDateText = x.SubmissionDate.ToString("yyyy-MM-dd"),
@@ -121,7 +121,7 @@ namespace ReportSystem.Pages.Admin
             public int ReportId { get; set; }
             public string ReportType { get; set; } = string.Empty;
             public string Title { get; set; } = string.Empty;
-            public string ReportType { get; set; } = string.Empty;
+            //public string ReportType { get; set; } = string.Empty;
             public string ReportedBy { get; set; } = string.Empty;
             public string Area { get; set; } = string.Empty;
             public string SubmissionDateText { get; set; } = string.Empty;

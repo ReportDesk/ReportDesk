@@ -33,12 +33,8 @@ namespace ReportSystem.Pages.Admin
         public string Area { get; private set; } = string.Empty;
         public string MachineName { get; private set; } = string.Empty;
         public string ReportDateText { get; private set; } = string.Empty;
-        public string ReportTitle { get; private set; } = string.Empty;
-        public string ReportType { get; private set; } = string.Empty;
-        public string ReportedBy { get; private set; } = string.Empty;
         public string ReportArea { get; private set; } = string.Empty;
         public string ReportDescription { get; private set; } = string.Empty;
-        public List<AttachmentViewModel> Attachments { get; private set; } = new();
 
         [BindProperty]
         [Required(ErrorMessage = "Status is required.")]
@@ -114,22 +110,22 @@ namespace ReportSystem.Pages.Admin
             ReportDescription = report.Description;
             SelectedStatus = string.IsNullOrWhiteSpace(SelectedStatus) ? report.Status : SelectedStatus;
 
-            Attachments = await _db.Attachments
-                .AsNoTracking()
-                .Where(x => x.ReportId == ReportId)
-                .OrderBy(x => x.UploadDate)
-                .Select(x => new AttachmentViewModel
-                {
-                    FileName = x.FileName,
-                    FilePath = x.FilePath,
-                    UploadDateText = x.UploadDate.ToString("yyyy-MM-dd HH:mm")
-                })
-                .ToListAsync(cancellationToken);
+            //Attachments = await _db.Attachments
+            //    .AsNoTracking()
+            //    .Where(x => x.ReportId == ReportId)
+            //    .OrderBy(x => x.UploadDate)
+            //    .Select(x => new AttachmentViewModel
+            //    {
+            //        FileName = x.FileName,
+            //        FilePath = x.FilePath,
+            //        UploadDateText = x.UploadDate.ToString("yyyy-MM-dd HH:mm")
+            //    })
+            //    .ToListAsync(cancellationToken);
 
             return true;
         }
 
-        private sealed class MockReport
+        private sealed class AttachmentReport
         {
             public string FileName { get; set; } = string.Empty;
             public string FilePath { get; set; } = string.Empty;

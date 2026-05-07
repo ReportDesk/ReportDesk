@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Reflection.PortableExecutable;
 
 namespace ReportSystem.Models
 {
@@ -38,6 +39,9 @@ namespace ReportSystem.Models
         public int UpdatedBy { get; set; }
 
         [Column("MACHINE_ID")]
-        public int MachineId { get; set; }
+        public int? MachineId { get; set; }
+
+        [ForeignKey("MachineId")]
+        public MasterMachine? Machine { get; set; }
     }
 }

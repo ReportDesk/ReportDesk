@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Supabase;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,9 +8,22 @@ builder.Services.AddRazorPages();
 builder.Services.AddControllers();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("RDConnectionString")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("SupabaseDb")));
 builder.Services.AddScoped<ReportSystem.Services.ReportService>();
 builder.Services.AddScoped<ReportSystem.Services.IImageVirusScanner, ReportSystem.Services.NoOpImageVirusScanner>();
+builder.Services.AddScoped<Client>(_ =>
+    new Client(
+        builder.Configuration["Supabase:Url"]!,
+        builder.Configuration["Supabase:Key"]!,
+        new SupabaseOptions { AutoRefreshToken = true }
+    ));
+
+var connStr = builder.Configuration.GetConnectionString("SupabaseDb");
+Console.WriteLine($"CONNECTION STRING: {connStr}"); // check terminal output
+
+builder.Services.AddControllers();
+
+builder.Services.AddSession();
 
 var app = builder.Build();
 
@@ -27,6 +41,8 @@ app.UseStaticFiles();
 app.UseRouting();
 
 app.UseAuthorization();
+
+app.UseSession();
 
 app.MapRazorPages();
 app.MapControllers();

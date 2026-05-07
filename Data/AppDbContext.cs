@@ -11,10 +11,4 @@ public class AppDbContext : DbContext
     public DbSet<MasterUser> MasterUsers { get; set; }
     public DbSet<MasterMachine> MasterMachines { get; set; }
     public DbSet<Attachment> Attachments { get; set; }
-
-    public DbSet<MasterReport> MasterReports => Set<MasterReport>();
-    public DbSet<MasterMachine> MasterMachines => Set<MasterMachine>();
-    public DbSet<MasterFollowUp> MasterFollowUps => Set<MasterFollowUp>();
-    public DbSet<Attachment> Attachments => Set<Attachment>();
-    public DbSet<MasterUser> MasterUsers => Set<MasterUser>();
 }

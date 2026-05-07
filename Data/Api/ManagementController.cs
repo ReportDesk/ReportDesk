@@ -47,7 +47,7 @@ namespace ReportSystem.Data.Api
             try
             {
                 var report = await _context.MasterReports
-                                    .Include(r => r.MachineId)
+                                    .Include(r => r.Machine)
                                     .FirstOrDefaultAsync(r => r.ReportId == id);
 
                 if (report == null)
@@ -88,7 +88,7 @@ namespace ReportSystem.Data.Api
                     title = report.ReportTitle,
                     reportedBy = report.ReportedBy,
                     area = report.Area,
-                    machineName = report.MachineId != null ? report.MachineId.MachineName : null,
+                    machineName = report.Machine != null ? report.Machine.MachineName : null,
                     submissionDate = report.SubmissionDate.ToString("dd-MM-yyyy"),
                     description = report.Description,
                     status = report.Status,

@@ -59,7 +59,7 @@ namespace ReportSystem.Pages
         {
             "Admin" => "/Admin/Index",
             "Machine" => "/Admin/ReportList?ReportType=Machine",
-            "NearMiss" => "/Admin/ReportList?ReportType=NearMiss",
+            "Nearmiss" => "/Admin/ReportList?ReportType=NearMiss",
             "Suggestion" => "/Admin/ReportList?ReportType=Suggestion",
             "Kaizen" => "/Admin/ReportList?ReportType=Kaizen"
         };

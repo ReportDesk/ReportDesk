@@ -17,7 +17,7 @@ builder.Services.AddScoped<Client>(_ =>
         builder.Configuration["Supabase:Key"]!,
         new SupabaseOptions { AutoRefreshToken = true }
     ));
-
+builder.Services.AddHttpContextAccessor();
 var connStr = builder.Configuration.GetConnectionString("SupabaseDb");
 Console.WriteLine($"CONNECTION STRING: {connStr}"); // check terminal output
 

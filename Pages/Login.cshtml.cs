@@ -58,7 +58,10 @@ namespace ReportSystem.Pages
         private static string GetRedirectUrl(string role) => role switch
         {
             "Admin" => "/Admin/Index",
-            _       => "/Index"
+            "Machine" => "/Admin/ReportList?ReportType=Machine",
+            "NearMiss" => "/Admin/ReportList?ReportType=NearMiss",
+            "Suggestion" => "/Admin/ReportList?ReportType=Suggestion",
+            "Kaizen" => "/Admin/ReportList?ReportType=Kaizen"
         };
     }
 }

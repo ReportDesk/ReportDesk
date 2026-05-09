@@ -21,8 +21,6 @@ builder.Services.AddScoped<Client>(_ =>
 var connStr = builder.Configuration.GetConnectionString("SupabaseDb");
 Console.WriteLine($"CONNECTION STRING: {connStr}"); // check terminal output
 
-builder.Services.AddControllers();
-
 builder.Services.AddSession();
 
 var app = builder.Build();

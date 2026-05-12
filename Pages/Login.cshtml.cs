@@ -3,13 +3,13 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
-<<<<<<< HEAD
-using ReportSystem.Data;
-=======
+
+
+
 using ReportSystem.Controllers;
 using ReportSystem.Models;
 using System.Security.Claims;
->>>>>>> 0433bd4be4c046d0818292e6291be2d6eff67197
+
 
 namespace ReportSystem.Pages
 {
@@ -45,15 +45,9 @@ namespace ReportSystem.Pages
 
         public async Task<IActionResult> OnPostAsync()
         {
-<<<<<<< HEAD
-            HttpContext.Session.Clear();
-
-            if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password))
-=======
             var user = await AuthenticateUserAsync(Username, Password);
 
             if (user != null)
->>>>>>> 0433bd4be4c046d0818292e6291be2d6eff67197
             {
                 var claims = new List<Claim>
                 {
@@ -88,25 +82,7 @@ namespace ReportSystem.Pages
 
                 return Redirect(GetRedirectUrl(user.Role));
             }
-
-<<<<<<< HEAD
-            var user = await _context.MasterUsers
-                .FirstOrDefaultAsync(u => u.Username == Username.Trim() && u.IsActive == 1);
-
-            if (user == null || !BCrypt.Net.BCrypt.Verify(Password, user.Password))
-            {
-                ErrorMessage = "Invalid username or password";
-                return Page();
-            }
-
-            HttpContext.Session.SetString("UserId", user.UserId.ToString());
-            HttpContext.Session.SetString("Username", user.Username);
-            HttpContext.Session.SetString("Role", user.Role);
-
-            return Redirect(GetRedirectUrl(user.Role));
-=======
             return Page();
->>>>>>> 0433bd4be4c046d0818292e6291be2d6eff67197
         }
 
         protected async Task<MasterUser?> AuthenticateUserAsync(string username, string password)
@@ -172,7 +148,6 @@ namespace ReportSystem.Pages
             "Nearmiss" => "/Admin/ReportList?ReportType=NearMiss",
             "Suggestion" => "/Admin/ReportList?ReportType=Suggestion",
             "Kaizen" => "/Admin/ReportList?ReportType=Kaizen",
->>>>>>> 0433bd4be4c046d0818292e6291be2d6eff67197
             _ => "/Index"
         };
     }

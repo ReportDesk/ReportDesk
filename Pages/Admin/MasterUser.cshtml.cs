@@ -60,6 +60,7 @@ namespace ReportSystem.Pages.Admin
         {
             public int UserId { get; set; }
             public string Username { get; set; } = string.Empty;
+            public string Fullname { get; set; } = string.Empty;
             public string Role { get; set; } = string.Empty;
             public bool IsActive { get; set; }
         }
@@ -208,6 +209,7 @@ namespace ReportSystem.Pages.Admin
                 {
                     UserId = u.UserId,
                     Username = u.Username,
+                    Fullname = u.Fullname,
                     Role = u.Role,
                     IsActive = u.IsActive == 1
                 })

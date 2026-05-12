@@ -13,6 +13,12 @@ namespace ReportSystem.Models
         [Column("MACHINE_NAME")]
         public string MachineName { get; set; } = string.Empty;
 
+        [Column("AREA")]
+        public string MachineArea { get; set; }
+
+        [Column("TYPE")]
+        public string MachineType { get; set; }
+
         [Column("CREATED_DATE")]
         public DateTime CreatedDate { get; set; }
 

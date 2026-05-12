@@ -110,9 +110,7 @@ namespace ReportSystem.Controllers.API
             var isNew = form.UserId == null || form.UserId == 0;
             var isActiveNormalized = form.IsActive?.Trim() == "1" ? (byte)1 : (byte)0;
             var now = DateTime.Now;
-
-            if (isNew && string.IsNullOrWhiteSpace(form.Password))
-                return BadRequest(new { message = "Password is required when adding a new user." });
+            var defaultPass = "ReportDesk123!";
 
             try
             {
@@ -123,8 +121,6 @@ namespace ReportSystem.Controllers.API
 
                     if (duplicateExists)
                         return BadRequest(new { message = "Username already exists." });
-
-                    var defaultPass = "ReportDesk123!";
 
                     var user = new MasterUser
                     {

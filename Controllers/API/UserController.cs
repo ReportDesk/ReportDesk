@@ -212,9 +212,6 @@ namespace ReportSystem.Controllers.API
             if (form.NewPassword.Length > 100)
                 return BadRequest(new { message = "Password is too long" });
 
-            if (form.OldPassword == form.NewPassword)
-                return BadRequest(new { message = "New password must be different from old password" });
-
             if (form.NewPassword != form.ConfirmPassword)
                 return BadRequest(new { message = "Password confirmation does not match" });
 
@@ -228,6 +225,12 @@ namespace ReportSystem.Controllers.API
 
                 if (user == null)
                     return NotFound(new { message = "User not found." });
+
+                if (!BCrypt.Net.BCrypt.Verify(form.OldPassword, user.Password))
+                    return BadRequest(new { message = "Old password is incorrect" });
+
+                if (BCrypt.Net.BCrypt.Verify(form.NewPassword, user.Password) || form.NewPassword == form.OldPassword)
+                    return BadRequest(new { message = "New password must be different from your current password" });
 
                 user.Password = BCrypt.Net.BCrypt.HashPassword(form.NewPassword);
                 await _context.SaveChangesAsync();

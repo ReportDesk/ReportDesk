@@ -1,0 +1,110 @@
+﻿@page
+@model ReportSystem.Pages.Admin.MainModel
+@{
+    ViewData["Title"] = "Main";
+}
+
+<div class="container-body">
+    <div class="row mb-2">
+        <div class="col-lg-12 col-md-12 col-sm-12">
+            <h5 class="fw-bold">Main Menu</h5>
+        </div>
+    </div>
+
+    <div class="row">
+
+        <!-- Machine Report -->
+        <div class="col-lg-4 mb-4">
+            <a href="/Admin/ReportDetail/Machine" class="card border-0 shadow-sm text-decoration-none h-100">
+                <div class="card-img-top d-flex align-items-center justify-content-center bg-success bg-opacity-10 p-4" style="height: 160px;">
+                    <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/2699.svg"
+                         alt="Machine Report"
+                         style="height: 90px; width: 90px; object-fit: contain;">
+                </div>
+                <div class="card-body p-3">
+                    <h6 class="card-title fw-bold text-dark mb-1">Machine Report</h6>
+                    <small class="text-muted">Menindaklanjuti mesin atau peralatan yang rusak</small>
+                </div>
+            </a>
+        </div>
+
+        @if(Model.UserRole == "1" || Model.UserRole?.ToLower() == "admin")
+        {
+            <!-- Near-Miss Report -->
+            <div class="col-lg-4 mb-4">
+                <a href="/Admin/ReportDetail/NearMiss" class="card border-0 shadow-sm text-decoration-none h-100">
+                    <div class="card-img-top d-flex align-items-center justify-content-center bg-warning bg-opacity-10 p-4" style="height: 160px;">
+                        <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/26a0.svg"
+                             alt="Near-Miss Report"
+                             style="height: 90px; width: 90px; object-fit: contain;">
+                    </div>
+                    <div class="card-body p-3">
+                        <h6 class="card-title fw-bold text-dark mb-1">Near-Miss Report</h6>
+                        <small class="text-muted">Menindaklanjuti temuan kondisi yang berpotensi bahaya</small>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Suggestion -->
+            <div class="col-lg-4 mb-4">
+                <a href="/Admin/ReportDetail/Suggestion" class="card border-0 shadow-sm text-decoration-none h-100">
+                    <div class="card-img-top d-flex align-items-center justify-content-center bg-info bg-opacity-10 p-4" style="height: 160px;">
+                        <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f4a1.svg"
+                             alt="Suggestion"
+                             style="height: 90px; width: 90px; object-fit: contain;">
+                    </div>
+                    <div class="card-body p-3">
+                        <h6 class="card-title fw-bold text-dark mb-1">Suggestion</h6>
+                        <small class="text-muted">Menindaklanjuti ide perbaikan di segala bidang</small>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Kaizen Report -->
+            <div class="col-lg-4 mb-4">
+                <a href="/Admin/ReportDetail/Kaizen" class="card border-0 shadow-sm text-decoration-none h-100">
+                    <div class="card-img-top d-flex align-items-center justify-content-center bg-primary bg-opacity-10 p-4" style="height: 160px;">
+                        <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f4c8.svg"
+                             alt="Kaizen Report"
+                             style="height: 90px; width: 90px; object-fit: contain;">
+                    </div>
+                    <div class="card-body p-3">
+                        <h6 class="card-title fw-bold text-dark mb-1">Kaizen Report</h6>
+                        <small class="text-muted">Menindaklanjuti laporan kaizen</small>
+                    </div>
+                </a>
+            </div>
+
+            <!-- Master User (Admin Only) -->
+            <div class="col-lg-4 mb-4">
+                <a href="/Admin/MasterUser" class="card border-0 shadow-sm text-decoration-none h-100">
+                    <div class="card-img-top d-flex align-items-center justify-content-center bg-primary bg-opacity-10 p-4" style="height: 160px;">
+                        <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f464.svg"
+                             alt="Master User"
+                             style="height: 90px; width: 90px; object-fit: contain;">
+                    </div>
+                    <div class="card-body p-3">
+                        <h6 class="card-title fw-bold text-dark mb-1">Master User</h6>
+                        <small class="text-muted">Kelola data pengguna sistem</small>
+                    </div>
+                </a>
+            </div>
+        }
+        
+        <!-- Master Machine -->
+        <div class="col-lg-4 mb-4">
+            <a href="/Admin/MasterMachine" class="card border-0 shadow-sm text-decoration-none h-100">
+                <div class="card-img-top d-flex align-items-center justify-content-center bg-danger bg-opacity-10 p-4" style="height: 160px;">
+                    <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f527.svg"
+                         alt="Master Machine"
+                         style="height: 90px; width: 90px; object-fit: contain;">
+                </div>
+                <div class="card-body p-3">
+                    <h6 class="card-title fw-bold text-dark mb-1">Master Machine</h6>
+                    <small class="text-muted">Kelola data mesin dan peralatan</small>
+                </div>
+            </a>
+        </div>
+
+    </div>
+</div>

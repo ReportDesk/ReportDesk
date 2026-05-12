@@ -1,20 +1,15 @@
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace ReportSystem.Pages
 {
     public class IndexModel : PageModel
     {
-        //private readonly ILogger<IndexModel> _logger;
-
-        //public IndexModel(ILogger<IndexModel> logger)
-        //{
-        //    _logger = logger;
-        //}
-
         public void OnGet()
         {
+<<<<<<< HEAD
+=======
 
+>>>>>>> 0433bd4be4c046d0818292e6291be2d6eff67197
         }
     }
 }

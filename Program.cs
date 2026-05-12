@@ -31,6 +31,10 @@ builder.Services.AddScoped<Client>(_ =>
         builder.Configuration["Supabase:Key"]!,
         new SupabaseOptions { AutoRefreshToken = true }
     ));
+<<<<<<< HEAD
+
+builder.Services.AddSession();
+=======
 builder.Services.AddHttpContextAccessor();
 var connStr = builder.Configuration.GetConnectionString("SupabaseDb");
 Console.WriteLine($"CONNECTION STRING: {connStr}"); // check terminal output
@@ -47,6 +51,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IConfigurationService, ConfigurationService>();
 builder.Services.AddScoped<ReportSystem.Helpers.AppDbConnection>();
 
+>>>>>>> 0433bd4be4c046d0818292e6291be2d6eff67197
 
 var app = builder.Build();
 

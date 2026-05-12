@@ -1,14 +1,9 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-
-// TODO: Add your DbContext using statement, e.g.:
-// using ReportSystem.Data;
-// using Microsoft.EntityFrameworkCore;
 
 namespace ReportSystem.Pages.Admin
 {
-    public class ReportListModel : PageModel
+    public class ReportListModel : AdminPageModel
     {
         private readonly AppDbContext _db;
 
@@ -38,13 +33,17 @@ namespace ReportSystem.Pages.Admin
         [BindProperty(SupportsGet = true)]
         public bool StatusDone { get; set; }
 
-        // ── View Data ─────────────────────────────────────────────────────────
-
         public List<ReportRowViewModel> ReportRows { get; private set; } = new();
         public string? LoadError { get; private set; }
 
-        public async Task OnGetAsync(CancellationToken cancellationToken)
+        public async Task<IActionResult> OnGetAsync(CancellationToken cancellationToken)
         {
+            var redirect = RedirectIfNotAdmin();
+            if (redirect is not null)
+            {
+                return redirect;
+            }
+
             try
             {
                 var query = _db.MasterReports.AsNoTracking();
@@ -71,8 +70,8 @@ namespace ReportSystem.Pages.Admin
                     .Select(x => new ReportRowViewModel
                     {
                         ReportId = x.ReportId,
+                        ReportType = x.ReportType,
                         Title = x.ReportTitle,
-                        //ReportType = x.ReportType,
                         ReportedBy = x.ReportedBy,
                         Area = x.Area,
                         SubmissionDateText = x.SubmissionDate.ToString("yyyy-MM-dd"),
@@ -85,6 +84,8 @@ namespace ReportSystem.Pages.Admin
                 LoadError = $"Report data is unavailable: {ex.Message}";
                 ReportRows = new();
             }
+
+            return Page();
         }
 
         private List<string> GetSelectedStatuses()
@@ -114,14 +115,11 @@ namespace ReportSystem.Pages.Admin
             return statuses;
         }
 
-        // ── View Model ────────────────────────────────────────────────────────
-
         public sealed class ReportRowViewModel
         {
             public int ReportId { get; set; }
             public string ReportType { get; set; } = string.Empty;
             public string Title { get; set; } = string.Empty;
-            //public string ReportType { get; set; } = string.Empty;
             public string ReportedBy { get; set; } = string.Empty;
             public string Area { get; set; } = string.Empty;
             public string SubmissionDateText { get; set; } = string.Empty;

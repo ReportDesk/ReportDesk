@@ -14,7 +14,7 @@ namespace ReportSystem.Pages
 
         public void OnGet()
         {
-            //Response.Redirect("/Admin/Index");
+
         }
     }
 }

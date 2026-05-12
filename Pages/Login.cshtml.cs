@@ -1,8 +1,11 @@
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
-using ReportSystem.Data;
-using System.Net.NetworkInformation;
+using ReportSystem.Controllers;
+using ReportSystem.Models;
+using System.Security.Claims;
 
 namespace ReportSystem.Pages
 {
@@ -21,6 +24,9 @@ namespace ReportSystem.Pages
         [BindProperty]
         public string Password { get; set; } = string.Empty;
 
+        [BindProperty]
+        public string ErrorSource { get; set; } = string.Empty;
+
         public string? ErrorMessage { get; set; }
 
         public void OnGet()
@@ -32,36 +38,111 @@ namespace ReportSystem.Pages
 
         public async Task<IActionResult> OnPostAsync()
         {
-            if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password))
+            var user = await AuthenticateUserAsync(Username, Password);
+
+            if (user != null)
             {
-                ErrorMessage = "Please enter your username and password.";
-                return Page();
+                var claims = new List<Claim>
+                {
+                    new Claim(ClaimTypes.Name, user.Username ?? ""),
+                    new Claim(ClaimTypes.Email, user.Email ?? ""),
+                    new Claim(ClaimTypes.NameIdentifier, user.Fullname ?? ""),
+                    new Claim(ClaimTypes.Role, user.Role ?? "")
+                };
+
+                // Store Session
+                HttpContext.Session.SetString("UserId", user.UserId.ToString());
+                HttpContext.Session.SetString("Username", user.Username ?? "");
+                HttpContext.Session.SetString("Role", user.Role ?? "");
+
+                var identity = new ClaimsIdentity(
+                    claims,
+                    CookieAuthenticationDefaults.AuthenticationScheme
+                );
+
+                var principal = new ClaimsPrincipal(identity);
+
+                var authProperties = new AuthenticationProperties
+                {
+                    ExpiresUtc = DateTimeOffset.UtcNow.AddHours(24)
+                };
+
+                await HttpContext.SignInAsync(
+                    CookieAuthenticationDefaults.AuthenticationScheme,
+                    principal,
+                    authProperties
+                );
+
+                return Redirect(GetRedirectUrl(user.Role));
             }
 
-            var user = await _context.MasterUsers
-                .FirstOrDefaultAsync(u => u.Username == Username.Trim() && u.IsActive == 1);
-
-            if (user == null || !BCrypt.Net.BCrypt.Verify(Password, user.Password))
-            {
-                ErrorMessage = "Invalid username or password";
-                return Page();
-            }
-
-            // Store Session
-            HttpContext.Session.SetString("UserId", user.UserId.ToString());
-            HttpContext.Session.SetString("Username", user.Username);
-            HttpContext.Session.SetString("Role", user.Role);
-
-            return Redirect(GetRedirectUrl(user.Role));
+            return Page();
         }
 
-        private static string GetRedirectUrl(string role) => role switch
+        protected async Task<MasterUser?> AuthenticateUserAsync(string username, string password)
+        {
+            ErrorSource = "login";
+
+            try
+            {
+                var user = await CheckUserAsync(username);
+
+                if (user == null)
+                    return null;
+
+                // Check active user
+                if (user.IsActive != (byte)1)
+                {
+                    ErrorMessage = "User Inactive";
+                    return null;
+                }
+
+                // Verify password
+                if (BCrypt.Net.BCrypt.Verify(password, user.Password))
+                {
+                    return user;
+                }
+
+                ErrorMessage = "Invalid Password";
+                return null;
+            }
+            catch (Exception)
+            {
+                ErrorMessage = "Invalid username or password";
+                return null;
+            }
+        }
+
+        protected async Task<MasterUser?> CheckUserAsync(string username)
+        {
+            try
+            {
+                var user = await _context.MasterUsers
+                    .FirstOrDefaultAsync(u => u.Username == username);
+
+                if (user == null)
+                {
+                    ErrorMessage = "User Not Found";
+                    return null;
+                }
+
+                return user;
+            }
+            catch (Exception)
+            {
+                ErrorMessage = "Error in check user";
+                return null;
+            }
+        }
+
+        private string GetRedirectUrl(string role) => role switch
         {
             "Admin" => "/Admin/Index",
             "Machine" => "/Admin/ReportList?ReportType=Machine",
             "Nearmiss" => "/Admin/ReportList?ReportType=NearMiss",
             "Suggestion" => "/Admin/ReportList?ReportType=Suggestion",
-            "Kaizen" => "/Admin/ReportList?ReportType=Kaizen"
+            "Kaizen" => "/Admin/ReportList?ReportType=Kaizen",
+            _ => "/Index"
         };
     }
 }

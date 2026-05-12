@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.EntityFrameworkCore;
-using ReportSystem.Data;
 using ReportSystem.Models;
 
-namespace ReportSystem.Data.Api
+namespace ReportSystem.Controllers.API
 {
     [ApiController]
     [Route("api/user")]
@@ -22,11 +22,19 @@ namespace ReportSystem.Data.Api
         public class AddEditUserForm
         {
             public int? UserId { get; set; }
+            public string Fullname { get; set; } = "";
             public string Username { get; set; } = "";
             public string Email { get; set; } = "";
             public string Password { get; set; } = "";
             public string Role { get; set; } = "";
             public string IsActive { get; set; } = "1";
+        }
+
+        public class ChangePasswordForm
+        {
+            public string OldPassword { get; set; } = "";
+            public string NewPassword { get; set; } = "";
+            public string ConfirmPassword { get; set; } = "";
         }
 
         // GET /api/user/GetUsers
@@ -106,8 +114,6 @@ namespace ReportSystem.Data.Api
             if (isNew && string.IsNullOrWhiteSpace(form.Password))
                 return BadRequest(new { message = "Password is required when adding a new user." });
 
-            await using var tx = await _context.Database.BeginTransactionAsync();
-
             try
             {
                 if (isNew)
@@ -118,11 +124,13 @@ namespace ReportSystem.Data.Api
                     if (duplicateExists)
                         return BadRequest(new { message = "Username already exists." });
 
+                    var defaultPass = "ReportDesk123!";
+
                     var user = new MasterUser
                     {
                         Username = form.Username.Trim(),
                         Email = form.Email.Trim(),
-                        Password = BCrypt.Net.BCrypt.HashPassword(form.Password),
+                        Password = BCrypt.Net.BCrypt.HashPassword(defaultPass),
                         Role = form.Role.Trim(),
                         IsActive = isActiveNormalized,
                         CreatedDate = now
@@ -130,7 +138,6 @@ namespace ReportSystem.Data.Api
 
                     _context.MasterUsers.Add(user);
                     await _context.SaveChangesAsync();
-                    await tx.CommitAsync();
 
                     return Ok(new { message = "User successfully added." });
                 }
@@ -148,20 +155,19 @@ namespace ReportSystem.Data.Api
                     if (duplicateExists)
                         return BadRequest(new { message = "Username already exists." });
 
+                    user.Fullname = form.Fullname.Trim();
                     user.Username = form.Username.Trim();
                     user.Email = form.Email.Trim();
                     user.Role = form.Role.Trim();
                     user.IsActive = isActiveNormalized;
 
                     await _context.SaveChangesAsync();
-                    await tx.CommitAsync();
 
                     return Ok(new { message = "User successfully updated." });
                 }
             }
             catch (Exception ex)
             {
-                await tx.RollbackAsync();
                 _logger.LogError(ex, "Error saving user (username: {Username})", form.Username);
                 return StatusCode(500, new { message = "An error occurred.", error = ex.Message });
             }
@@ -171,8 +177,6 @@ namespace ReportSystem.Data.Api
         [HttpDelete("DeleteUser/{id}")]
         public async Task<IActionResult> DeleteUser(int id)
         {
-            await using var tx = await _context.Database.BeginTransactionAsync();
-
             try
             {
                 var user = await _context.MasterUsers.FirstOrDefaultAsync(u => u.UserId == id);
@@ -182,15 +186,59 @@ namespace ReportSystem.Data.Api
 
                 _context.MasterUsers.Remove(user);
                 await _context.SaveChangesAsync();
-                await tx.CommitAsync();
 
                 return Ok(new { message = "User successfully deleted." });
             }
             catch (Exception ex)
             {
-                await tx.RollbackAsync();
                 _logger.LogError(ex, "Error deleting user {Id}", id);
                 return StatusCode(500, new { message = "An error occurred.", error = ex.Message });
+            }
+        }
+
+        // CHANGE PASSWORD /api/user/ChangePassword
+        [HttpPost("ChangePassword")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordForm form)
+        {
+            if (string.IsNullOrWhiteSpace(form.OldPassword))
+                return BadRequest(new { message = "Old password cannot be empty" });
+
+            if (string.IsNullOrWhiteSpace(form.NewPassword))
+                return BadRequest(new { message = "New password cannot be empty" });
+
+            if (form.NewPassword.Length < 6)
+                return BadRequest(new { message = "Password must be at least 6 characters long" });
+
+            if (form.NewPassword.Length > 100)
+                return BadRequest(new { message = "Password is too long" });
+
+            if (form.OldPassword == form.NewPassword)
+                return BadRequest(new { message = "New password must be different from old password" });
+
+            if (form.NewPassword != form.ConfirmPassword)
+                return BadRequest(new { message = "Password confirmation does not match" });
+
+            var userId = GetCurrentUserId();
+            if (userId == 0)
+                return Unauthorized(new { message = "You are not logged in.", redirect = "/Login" });
+
+            try
+            {
+                var user = await _context.MasterUsers.FindAsync(userId);
+
+                if (user == null)
+                    return NotFound(new { message = "User not found." });
+
+                user.Password = BCrypt.Net.BCrypt.HashPassword(form.NewPassword);
+                await _context.SaveChangesAsync();
+
+                HttpContext.Session.Clear();
+                return Ok(new { message = "Password change successfully. Please log in again", redirect = "/Login" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error changing password for user {id}, userId");
+                return StatusCode(500, new { message = "An error occured.", error = ex.Message });
             }
         }
 

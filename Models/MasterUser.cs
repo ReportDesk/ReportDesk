@@ -10,6 +10,9 @@ namespace ReportSystem.Models
         [Column("USER_ID")]
         public int UserId { get; set; }
 
+        [Column("FULLNAME")]
+        public string Fullname { get; set; } = string.Empty;
+
         [Column("USERNAME")]
         public string Username { get; set; } = string.Empty;
 

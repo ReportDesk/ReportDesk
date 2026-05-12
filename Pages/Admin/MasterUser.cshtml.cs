@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using ReportSystem.Models;
 using System.ComponentModel.DataAnnotations;
+using System.Diagnostics;
 using System.Net.NetworkInformation;
 using System.Text.RegularExpressions;
 
@@ -194,10 +195,12 @@ namespace ReportSystem.Pages.Admin
         }
 
 
-        // Helpers
+        // -- Helpers
 
         private async Task LoadUsersAsync(CancellationToken ct)
         {
+            var sw = Stopwatch.StartNew();
+
             Users = await _db.MasterUsers
                 .AsNoTracking()
                 .OrderBy(u => u.Username)
@@ -209,6 +212,9 @@ namespace ReportSystem.Pages.Admin
                     IsActive = u.IsActive == 1
                 })
                 .ToListAsync(ct);
+
+            Console.WriteLine(_db.Database.GetConnectionString());
+            Console.WriteLine($"LoadUsersAsync took {sw.ElapsedMilliseconds}ms");
         }
 
         private bool IsAdmin() =>

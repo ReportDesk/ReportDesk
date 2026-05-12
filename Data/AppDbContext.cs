@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using ReportSystem.Models;
-using ReportSystem.Data;
 
 public class AppDbContext : DbContext
 {

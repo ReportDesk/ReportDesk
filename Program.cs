@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
+using ReportSystem.Helpers;
 using Supabase;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -6,6 +8,18 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddRazorPages();
 builder.Services.AddControllers();
+
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/Login";
+        options.LogoutPath = "/Logout";
+        options.ExpireTimeSpan = TimeSpan.FromHours(24);
+        options.SlidingExpiration = true;
+    });
+
+//builder.Services.AddDbContext<AppDbContext>(options =>
+//    options.(builder.Configuration.GetConnectionString("SupabaseDb")));
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("SupabaseDb")));
@@ -17,8 +31,27 @@ builder.Services.AddScoped<Client>(_ =>
         builder.Configuration["Supabase:Key"]!,
         new SupabaseOptions { AutoRefreshToken = true }
     ));
+<<<<<<< HEAD
 
 builder.Services.AddSession();
+=======
+builder.Services.AddHttpContextAccessor();
+var connStr = builder.Configuration.GetConnectionString("SupabaseDb");
+Console.WriteLine($"CONNECTION STRING: {connStr}"); // check terminal output
+
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromHours(8);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
+builder.Services.AddHttpContextAccessor();
+
+builder.Services.AddScoped<IConfigurationService, ConfigurationService>();
+builder.Services.AddScoped<ReportSystem.Helpers.AppDbConnection>();
+
+>>>>>>> 0433bd4be4c046d0818292e6291be2d6eff67197
 
 var app = builder.Build();
 

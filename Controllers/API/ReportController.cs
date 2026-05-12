@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using ReportSystem.Services;
 
-namespace ReportSystem.Data.API;
+namespace ReportSystem.Controllers.API;
 
 [ApiController]
 [Route("api/reports")]

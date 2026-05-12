@@ -1,0 +1,333 @@
+﻿@page
+@model ReportSystem.Pages.Admin.MasterUserModel
+@{
+    ViewData["Title"] = "Master User";
+}
+@Html.AntiForgeryToken()
+
+<div class="container-body">
+
+    <!-- Header -->
+    <div class="row mb-3">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <div>
+                <h4 class="fw-bold mb-1">Master User</h4>
+                <small class="text-muted">Manage system users.</small>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="/Admin/Index" class="btn btn-outline-secondary btn-sm">Back</a>
+                <button type="button" class="btn btn-primary btn-sm"
+                        data-bs-toggle="modal" data-bs-target="#modalAddUser">
+                    <i class="fas fa-plus me-1"></i> New User
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Toast -->
+    @if (!string.IsNullOrWhiteSpace(Model.SuccessMessage))
+    {
+        <div class="alert alert-success py-2">@Model.SuccessMessage</div>
+    }
+
+    <!-- User Table -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-3 p-lg-4">
+            <h6 class="fw-bold mb-3">User List</h6>
+            <div class="table-responsive">
+                <table class="table table-striped table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Username</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th class="text-end">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (!Model.Users.Any())
+                        {
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-4">No users found.</td>
+                            </tr>
+                        }
+                        else
+                        {
+                            foreach (var u in Model.Users)
+                            {
+                                <tr>
+                                    <td class="fw-semibold">@u.Username</td>
+                                    <td><span class="badge bg-secondary">@u.Role</span></td>
+                                    <td>
+                                        <span class="badge @(u.IsActive ? "bg-success" : "bg-danger")">
+                                            @(u.IsActive ? "Active" : "Inactive")
+                                        </span>
+                                    </td>
+                                    <td class="text-end">
+                                        <button type="button" class="btn btn-warning btn-sm text-dark"
+                                                onclick="openEditModal('@u.UserId')">
+                                            Edit
+                                        </button>
+                                        <button type="button" class="btn btn-secondary btn-sm"
+                                                onclick="openResetModal('@u.Username')">
+                                            Reset Password
+                                        </button>
+                                        <button type="button" class="btn btn-danger btn-sm"
+                                                onclick="openDeleteModal(@u.UserId, '@u.Username')">
+                                            Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Modal Add User ─────────────────────────────────────────────────────── -->
+<div class="modal fade" id="modalAddUser" tabindex="-1" aria-labelledby="modalAddUserLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold" id="modalAddUserLabel">Add New User</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Username</label>
+                    <input type="text" class="form-control" id="addUsername" placeholder="e.g. john.doe">
+                    <div class="form-text">Lowercase letters, numbers, dots, underscores only.</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Password</label>
+                    <input type="password" class="form-control" id="addPassword" placeholder="Enter password">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Role</label>
+                    <select class="form-select" id="addRole">
+                        <option value="">Select role...</option>
+                        <option value="Admin">Admin</option>
+                        <option value="Machine">Machine</option>
+                        <option value="Report">Report</option>
+                        <option value="Kaizen">Kaizen</option>
+                    </select>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="addIsActive" checked>
+                    <label class="form-check-label fw-semibold" for="addIsActive">Active</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="AddUser()">Add User</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Modal Edit User ────────────────────────────────────────────────────── -->
+<div class="modal fade" id="modalEditUser" tabindex="-1" aria-labelledby="modalEditUserLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold" id="modalEditUserLabel">Edit User</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Username</label>
+                    <input type="text" class="form-control" id="editUsername" disabled>
+                    <div class="form-text">Username cannot be changed.</div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">
+                        Password <small class="text-muted fw-normal">(leave blank to keep current)</small>
+                    </label>
+                    <input type="password" class="form-control" id="editPassword" placeholder="Leave blank to keep current">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Role</label>
+                    <select class="form-select" id="editRole">
+                        <option value="Admin">Admin</option>
+                        <option value="Machine">Machine</option>
+                        <option value="Report">Report</option>
+                        <option value="Kaizen">Kaizen</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold d-block">Status</label>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="editStatus" id="editActive" value="true">
+                        <label class="form-check-label" for="editActive">Active</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="editStatus" id="editInactive" value="false">
+                        <label class="form-check-label" for="editInactive">Inactive</label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning text-dark" onclick="EditUser()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Modal Reset Password ───────────────────────────────────────────────── -->
+<div class="modal fade" id="modalResetPass" tabindex="-1" aria-labelledby="modalResetPassLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold" id="modalResetPassLabel">Reset Password</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to reset <strong id="resetUsernameLabel"></strong>'s password to the default?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="ResetPassword()">Reset</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Modal Delete User ──────────────────────────────────────────────────── -->
+<div class="modal fade" id="modalDelete" tabindex="-1" aria-labelledby="modalDeleteLabel" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold" id="modalDeleteLabel">Delete User</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete <strong id="deleteUsernameLabel"></strong>? This cannot be undone.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" onclick="DeleteUser()">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // ── State ────────────────────────────────────────────────────────────────
+        const users      = @Html.Raw(Json.Serialize(Model.Users));
+        let currentResetUsername = null;
+        let currentDeleteUserId  = null;
+        let isSubmitting         = false;
+
+        function getToken() {
+            return document.querySelector('input[name="__RequestVerificationToken"]').value;
+        }
+
+        function ajax(handler, payload, onSuccess) {
+            if (isSubmitting) return;
+            isSubmitting = true;
+
+            $.ajax({
+                url: `?handler=${handler}`,
+                type: "POST",
+                contentType: "application/json",
+                dataType: "json",
+                headers: { "RequestVerificationToken": getToken() },
+                data: JSON.stringify(payload),
+                success: (res) => {
+                    alert(res.message || "Success.");
+                    location.reload();
+                },
+                error: (xhr) => {
+                    alert(xhr.responseJSON?.message || xhr.statusText || "An error occurred.");
+                    isSubmitting = false;
+                }
+            });
+        }
+
+        // ── Add User ─────────────────────────────────────────────────────────────
+        function AddUser() {
+            const username = $("#addUsername").val().trim();
+            const password = $("#addPassword").val();
+            const role     = $("#addRole").val();
+            const isActive = $("#addIsActive").is(":checked");
+
+            if (!username || !password || !role) {
+                alert("Please fill in all fields.");
+                return;
+            }
+
+            ajax("AddUser", { username, password, role, isActive });
+        }
+
+        // ── Edit User ─────────────────────────────────────────────────────────────
+        function openEditModal(userId) {
+            const user = users.find(u => u.userId == parseInt(userId, 10));
+            if (!user) return;
+
+            document.getElementById("editUsername").value = user.username;
+            document.getElementById("editPassword").value = "";
+            document.getElementById("editRole").value = user.role;
+
+            const statusValue = user.isActive ? "true" : "false";
+            const radio = document.querySelector(`input[name="editStatus"][value="${statusValue}"]`);
+            if (radio) radio.checked = true;
+
+            const modal = new bootstrap.Modal(document.getElementById("modalEditUser"));
+            modal.show();
+        }
+
+        function EditUser() {
+            const username = document.getElementById("editUsername").value;
+            const password = document.getElementById("editPassword").value;
+            const role     = document.getElementById("editRole").value;
+            const statusEl = document.querySelector('input[name="editStatus"]:checked');
+
+            if (!role || !statusEl) {
+                alert("Please fill in all fields.");
+                return;
+            }
+
+            const isActive = statusEl.value === "true";
+            ajax("EditUser", { username, password, role, isActive });
+        }
+
+        // ── Reset Password ────────────────────────────────────────────────────────
+        function openResetModal(username) {
+            currentResetUsername = username;
+            document.getElementById("resetUsernameLabel").textContent = username;
+            const modal = new bootstrap.Modal(document.getElementById("modalResetPass"));
+            modal.show();
+        }
+
+        function ResetPassword() {
+            if (!currentResetUsername) return;
+            ajax("ResetPassword", { username: currentResetUsername });
+        }
+
+        // ── Delete User ───────────────────────────────────────────────────────────
+        function openDeleteModal(userId, username) {
+            currentDeleteUserId = userId;
+            document.getElementById("deleteUsernameLabel").textContent = username;
+            const modal = new bootstrap.Modal(document.getElementById("modalDelete"));
+            modal.show();
+        }
+
+        function DeleteUser() {
+            if (!currentDeleteUserId) return;
+            ajax("DeleteUser", { userId: currentDeleteUserId });
+        }
+
+        // ── Clear Add modal on close ──────────────────────────────────────────────
+        document.getElementById("modalAddUser").addEventListener("hidden.bs.modal", () => {
+            document.getElementById("addUsername").value = "";
+            document.getElementById("addPassword").value = "";
+            document.getElementById("addRole").value = "";
+            document.getElementById("addIsActive").checked = true;
+        });
+    </script>
+}

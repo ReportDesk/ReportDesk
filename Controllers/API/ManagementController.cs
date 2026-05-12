@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using ReportSystem.Models;
 
-namespace ReportSystem.Data.Api
+namespace ReportSystem.Controllers.API
 {
     [ApiController]
     [Route("api/management")]
@@ -92,7 +92,7 @@ namespace ReportSystem.Data.Api
                     submissionDate = report.SubmissionDate.ToString("dd-MM-yyyy"),
                     description = report.Description,
                     status = report.Status,
-                    followUps = followUps
+                    followUps
                 });
             }
             catch (Exception ex)

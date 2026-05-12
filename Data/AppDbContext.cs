@@ -10,4 +10,11 @@ public class AppDbContext : DbContext
     public DbSet<MasterUser> MasterUsers { get; set; }
     public DbSet<MasterMachine> MasterMachines { get; set; }
     public DbSet<Attachment> Attachments { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<MasterUser>()
+            .Property(x => x.CreatedDate)
+            .HasColumnType("timestamp without time zone");
+    }
 }

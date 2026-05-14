@@ -79,6 +79,7 @@ namespace ReportSystem.Migrations
                     PASSWORD = table.Column<string>(type: "text", nullable: false),
                     ROLE = table.Column<string>(type: "text", nullable: false),
                     CREATED_DATE = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UPDATED_DATE = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     IS_ACTIVE = table.Column<byte>(type: "smallint", nullable: false)
                 },
                 constraints: table =>

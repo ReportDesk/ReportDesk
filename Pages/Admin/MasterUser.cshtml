@@ -15,8 +15,8 @@
     @Html.AntiForgeryToken()
 }
 
-
 <div class="container-body">
+
     <!-- Breadcrumb -->
     <div class="row mb-2">
         <div class="col-lg-12 col-md-12 col-sm-12">
@@ -30,7 +30,7 @@
     <!-- Header -->
     <div class="row mb-2">
         <div class="col-lg-6 col-md-6 col-sm-6">
-            <h4 >User Management</h4>
+            <h4>User Management</h4>
         </div>
         <div class="col-lg-6 col-md-6 col-sm-6">
             <button type="button" class="btn btn-primary float-end"
@@ -40,17 +40,13 @@
         </div>
     </div>
 
-    <!-- Success Toast -->
-    @if (!string.IsNullOrWhiteSpace(Model.SuccessMessage))
-    {
-        <div class="alert alert-success py-2">@Model.SuccessMessage</div>
-    }
+    <!-- ── Notification Area ──────────────────────────────────── -->
+    <div id="notifArea"></div>
 
     <!-- User Table -->
     <div class="row">
         <div class="col-lg-12 col-md-12 col-sm-12">
             <div class="card">
-
                 <div class="card-body">
                     <div class="table-responsive">
                         <table class="table initDataTable">
@@ -69,7 +65,7 @@
                                 @if (!Model.Users.Any())
                                 {
                                     <tr>
-                                        <td colspan="4" class="text-center text-muted py-4">No users found.</td>
+                                        <td colspan="7" class="text-center text-muted py-4">No users found.</td>
                                     </tr>
                                 }
                                 else
@@ -78,7 +74,7 @@
                                     {
                                         <tr>
                                             <td>@u.Username</td>
-                                            <td>@u.Fullname </td>
+                                            <td>@u.Fullname</td>
                                             <td><span class="badge bg-secondary">@u.Role</span></td>
                                             <td>@u.Email</td>
                                             <td>
@@ -86,23 +82,27 @@
                                                     @(u.IsActive ? "Active" : "Inactive")
                                                 </span>
                                             </td>
-                                            <td> @(u.UpdatedDate.HasValue? u.UpdatedDate.Value.ToString("dd MMM yyyy HH:mm") : u.CreatedDate.ToString("dd MMM yyyy HH:mm"))</td>
-                                            <td class="text-end" style="white-space: nowrap;">
-                                                <button type="button" class="btn btn-warning btn-sm text-dark"
-                                                        onclick="openEditModal('@u.UserId')">
-                                                    Edit
-                                                </button>
-                                                <button type="button" class="btn btn-secondary btn-sm"
-                                                        onclick="openResetModal('@u.Username')">
-                                                    Reset Password
-                                                </button>
-                                                <button type="button" class="btn btn-danger btn-sm"
-                                                        onclick="openDeleteModal(@u.UserId, '@u.Username')">
-                                                    Delete
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    }
+                                            <td>
+                                                @(u.UpdatedDate.HasValue
+                                                                                        ? u.UpdatedDate.Value.ToString("dd MMM yyyy HH:mm")
+                                                                                        : u.CreatedDate.ToString("dd MMM yyyy HH:mm"))
+                                    </td>
+                                    <td class="text-end" style="white-space: nowrap;">
+                                        <button type="button" class="btn btn-warning btn-sm text-dark"
+                                                onclick="openEditModal('@u.UserId')">
+                                            Edit
+                                        </button>
+                                        <button type="button" class="btn btn-secondary btn-sm"
+                                                onclick="openResetModal('@u.Username')">
+                                            Reset Password
+                                        </button>
+                                        <button type="button" class="btn btn-danger btn-sm"
+                                                onclick="openDeleteModal(@u.UserId, '@u.Username')">
+                                            Delete
+                                        </button>
+                                    </td>
+                                </tr>
+                                                                }
                                 }
                             </tbody>
                         </table>
@@ -111,10 +111,10 @@
             </div>
         </div>
     </div>
-    
+
 </div>
 
-<!-- ── Modal Edit User ──────────────────────────────────────── -->
+<!-- ── Modal: Edit User ──────────────────────────────────────── -->
 <div class="modal fade" id="modalEditUser" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -123,7 +123,6 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <!-- Hidden UserId -->
                 <input type="hidden" id="editUserId" />
                 <div class="mb-3">
                     <label class="form-label fw-semibold">Full Name</label>
@@ -169,7 +168,7 @@
     </div>
 </div>
 
-<!-- ── Modal Add User ──────────────────────────────────────── -->
+<!-- ── Modal: Add User ──────────────────────────────────────── -->
 <div class="modal fade" id="modalAddUser" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -206,7 +205,6 @@
                     <input class="form-check-input" type="checkbox" id="addIsActive" checked />
                     <label class="form-check-label fw-semibold" for="addIsActive">Active</label>
                 </div>
-                <!-- Inform user about default password -->
                 <div class="alert alert-info mt-3 mb-0 py-2 small">
                     <i class="fas fa-info-circle me-1"></i>
                     Default password will be set to <strong>ReportDesk123!</strong>
@@ -219,13 +217,14 @@
         </div>
     </div>
 </div>
-<!-- ── Modal Reset Password ───────────────────────────────────────────────── -->
-<div class="modal fade" id="modalResetPass" tabindex="-1" aria-labelledby="modalResetPassLabel" aria-hidden="true">
+
+<!-- ── Modal: Reset Password ──────────────────────────────────── -->
+<div class="modal fade" id="modalResetPass" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-sm">
         <div class="modal-content">
             <div class="modal-header">
-                <h6 class="modal-title fw-bold" id="modalResetPassLabel">Reset Password</h6>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h6 class="modal-title fw-bold">Reset Password</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 Are you sure you want to reset <strong id="resetUsernameLabel"></strong>'s password to the default?
@@ -238,13 +237,13 @@
     </div>
 </div>
 
-<!-- ── Modal Delete User ──────────────────────────────────────────────────── -->
-<div class="modal fade" id="modalDelete" tabindex="-1" aria-labelledby="modalDeleteLabel" aria-hidden="true">
+<!-- ── Modal: Delete User ──────────────────────────────────────── -->
+<div class="modal fade" id="modalDelete" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-sm">
         <div class="modal-content">
             <div class="modal-header">
-                <h6 class="modal-title fw-bold" id="modalDeleteLabel">Delete User</h6>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h6 class="modal-title fw-bold">Delete User</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 Are you sure you want to delete <strong id="deleteUsernameLabel"></strong>? This cannot be undone.
@@ -258,20 +257,34 @@
 </div>
 
 @section Scripts {
+    <style>
+        #notifArea .alert .btn-close {
+            top: 50%;
+            transform: translateY(-50%);
+        }
+    </style>
     <script>
 
         $(document).ready(function () {
             $('table.initDataTable').DataTable({
                 pageLength: 10,
                 lengthMenu: [5, 10, 25, 50],
-                columnDefs: [
-                    {orderable: false, targets: 5}
-                ]
+                columnDefs: [{ orderable: false, targets: 6 }]
             });
+
+            // ── Show any pending notification left from a previous action ──
+            const pending = sessionStorage.getItem('pendingNotif');
+            if (pending) {
+                sessionStorage.removeItem('pendingNotif');
+                try {
+                    const { message, type } = JSON.parse(pending);
+                    showNotif(message, type);
+                } catch (_) { /* malformed entry, ignore */ }
+            }
         });
 
-        // ── State ────────────────────────────────────────────────────────────────
-        const users      = @Html.Raw(Json.Serialize(Model.Users));
+        // ── State ─────────────────────────────────────────────────
+        const users              = @Html.Raw(Json.Serialize(Model.Users));
         let currentResetUsername = null;
         let currentDeleteUserId  = null;
         let isSubmitting         = false;
@@ -280,139 +293,172 @@
             return document.querySelector('input[name="__RequestVerificationToken"]').value;
         }
 
-        function ajax(url, payload) {
+        // ── Notification helper ────────────────────────────────────
+        function showNotif(message, type = 'success') {
+            const area = document.getElementById('notifArea');
+            const id   = 'notif_' + Date.now();
+
+            area.innerHTML = `
+                <div id="${id}" class="alert alert-${type} alert-dismissible py-2 fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>`;
+
+            // Auto-dismiss after 5s
+            setTimeout(() => {
+                const el = document.getElementById(id);
+                if (el) bootstrap.Alert.getOrCreateInstance(el).close();
+            }, 5000);
+        }
+
+        // ── Queue a notification to appear after the next page reload ──
+        function queueNotif(message, type = 'success') {
+            sessionStorage.setItem('pendingNotif', JSON.stringify({ message, type }));
+        }
+
+        // ── Close modal, wait for backdrop, then run callback ─────
+        function closeModalThen(modalId, callback) {
+            const modalEl = document.getElementById(modalId);
+            const modal   = bootstrap.Modal.getInstance(modalEl)
+                         ?? bootstrap.Modal.getOrCreateInstance(modalEl);
+            modalEl.addEventListener('hidden.bs.modal', callback, { once: true });
+            modal.hide();
+        }
+
+        // ── AJAX wrapper ───────────────────────────────────────────
+        function ajax(url, payload, modalId) {
             if (isSubmitting) return;
             isSubmitting = true;
 
-            $.ajax({
-                url: url,
-                type: "POST",
-                contentType: "application/json",
-                headers: { "RequestVerificationToken": getToken() },
-                data: JSON.stringify(payload),
-                success: (res) => {
-                    alert(res.message || "Success.");
-                    location.reload();
-                },
-                error: (xhr) => {
-                    isSubmitting = false;
-                    let msg = "An error occurred.";
-                    if (xhr.responseJSON?.message) {
-                        msg = xhr.responseJSON.message;
-                    } else if (xhr.status === 401 || xhr.status === 403) {
-                        msg = "Session expired. Please log in again.";
-                        setTimeout(() => window.location.href = "/Login", 1500);
-                    } else {
-                        msg = `Server error (${xhr.status}).`;
+            closeModalThen(modalId, () => {
+                $.ajax({
+                    url:         url,
+                    type:        'POST',
+                    contentType: 'application/json',
+                    headers:     { 'RequestVerificationToken': getToken() },
+                    data:        JSON.stringify(payload),
+                    success: (res) => {
+                        queueNotif(res.message || 'Operation successful.', 'success');
+                        location.reload();
+                    },
+                    error: (xhr) => {
+                        isSubmitting = false;
+                        let msg = 'An error occurred.';
+                        if (xhr.responseJSON?.message) {
+                            msg = xhr.responseJSON.message;
+                        } else if (xhr.status === 401 || xhr.status === 403) {
+                            msg = 'Session expired. Please log in again.';
+                            setTimeout(() => window.location.href = '/Login', 2000);
+                        } else {
+                            msg = `Server error (${xhr.status}).`;
+                        }
+                        showNotif(msg, 'danger');
                     }
-                    alert(msg);
-                }
+                });
             });
         }
 
-        // ── Add User ──────────────────────────────────────────────────
+        // ── Add User ───────────────────────────────────────────────
         function AddUser() {
-            const fullname = $("#addFullname").val().trim();
-            const username = $("#addUsername").val().trim();
-            const email    = $("#addEmail").val().trim();
-            const role     = $("#addRole").val();
-            const isActive = $("#addIsActive").is(":checked") ? "1" : "0";
+            const fullname = $('#addFullname').val().trim();
+            const username = $('#addUsername').val().trim();
+            const email    = $('#addEmail').val().trim();
+            const role     = $('#addRole').val();
+            const isActive = $('#addIsActive').is(':checked') ? '1' : '0';
 
             if (!fullname || !username || !email || !role) {
-                alert("Please fill in all fields.");
+                showNotif('Please fill in all fields.', 'warning');
                 return;
             }
 
-            ajax("/api/user/AddEditUser", {
-                userId:   0,         // 0 = new user signal to backend
-                fullname,
-                username,
-                email,
-                role,
-                isActive
-                // no password — backend sets ReportDesk123! automatically
-            });
+            ajax('/api/user/AddEditUser', { userId: 0, fullname, username, email, role, isActive }, 'modalAddUser');
         }
 
-        // ── Open Edit Modal ───────────────────────────────────────────
+        // Clear Add modal on close
+        document.getElementById('modalAddUser').addEventListener('hidden.bs.modal', () => {
+            $('#addFullname, #addUsername, #addEmail').val('');
+            $('#addRole').val('');
+            $('#addIsActive').prop('checked', true);
+        });
+
+        // ── Edit User ──────────────────────────────────────────────
         function openEditModal(userId) {
             const user = users.find(u => u.userId == parseInt(userId, 10));
             if (!user) return;
 
-            document.getElementById("editUserId").value   = user.userId;
-            document.getElementById("editFullname").value = user.fullname ?? "";
-            document.getElementById("editUsername").value = user.username;
-            document.getElementById("editEmail").value    = user.email ?? "";
-            document.getElementById("editRole").value     = user.role;
+            document.getElementById('editUserId').value   = user.userId;
+            document.getElementById('editFullname').value = user.fullname ?? '';
+            document.getElementById('editUsername').value = user.username;
+            document.getElementById('editEmail').value    = user.email ?? '';
+            document.getElementById('editRole').value     = user.role;
 
-            const statusValue = user.isActive ? "1" : "0";
-            const radio = document.querySelector(`input[name="editStatus"][value="${statusValue}"]`);
+            const radio = document.querySelector(`input[name="editStatus"][value="${user.isActive ? '1' : '0'}"]`);
             if (radio) radio.checked = true;
 
-            new bootstrap.Modal(document.getElementById("modalEditUser")).show();
+            new bootstrap.Modal(document.getElementById('modalEditUser')).show();
         }
 
-        // ── Edit User ─────────────────────────────────────────────────
         function EditUser() {
-            const userId   = document.getElementById("editUserId").value;
-            const fullname = document.getElementById("editFullname").value.trim();
-            const username = document.getElementById("editUsername").value.trim();
-            const email    = document.getElementById("editEmail").value.trim();
-            const role     = document.getElementById("editRole").value;
+            const userId   = document.getElementById('editUserId').value;
+            const fullname = document.getElementById('editFullname').value.trim();
+            const username = document.getElementById('editUsername').value.trim();
+            const email    = document.getElementById('editEmail').value.trim();
+            const role     = document.getElementById('editRole').value;
             const statusEl = document.querySelector('input[name="editStatus"]:checked');
 
             if (!fullname || !email || !role || !statusEl) {
-                alert("Please fill in all fields.");
+                showNotif('Please fill in all fields.', 'warning');
                 return;
             }
 
-            ajax("/api/user/AddEditUser", {
-                userId:   parseInt(userId, 10),
-                fullname,
-                username,
-                email,
-                role,
-                isActive: statusEl.value   // "1" or "0" — matches backend trim check
-            });
+            ajax('/api/user/AddEditUser',
+                { userId: parseInt(userId, 10), fullname, username, email, role, isActive: statusEl.value },
+                'modalEditUser');
         }
 
-        // ── Open Delete Modal ─────────────────────────────────────────
+        // ── Reset Password ─────────────────────────────────────────
+        function openResetModal(username) {
+            currentResetUsername = username;
+            document.getElementById('resetUsernameLabel').textContent = username;
+            new bootstrap.Modal(document.getElementById('modalResetPass')).show();
+        }
+
+        function ResetPassword() {
+            if (!currentResetUsername) return;
+            const username = currentResetUsername;
+            currentResetUsername = null;
+            ajax('/api/user/ResetPassword', { username }, 'modalResetPass');
+        }
+
+        // ── Delete User ────────────────────────────────────────────
         function openDeleteModal(userId, username) {
             currentDeleteUserId = userId;
-            document.getElementById("deleteUsernameLabel").textContent = username;
-            new bootstrap.Modal(document.getElementById("modalDelete")).show();
+            document.getElementById('deleteUsernameLabel').textContent = username;
+            new bootstrap.Modal(document.getElementById('modalDelete')).show();
         }
 
-        // ── Delete User ───────────────────────────────────────────────
         function DeleteUser() {
             if (!currentDeleteUserId) return;
-            bootstrap.Modal.getInstance(document.getElementById("modalDelete")).hide();
+            const userId = currentDeleteUserId;
+            currentDeleteUserId = null;
 
-            $.ajax({
-                url:  `/api/user/DeleteUser/${currentDeleteUserId}`,
-                type: "DELETE",
-                headers: { "RequestVerificationToken": getToken() },
-                success: (res) => {
-                    alert(res.message || "User deleted.");
-                    location.reload();
-                },
-                error: (xhr) => {
-                    let msg = xhr.responseJSON?.message || `Server error (${xhr.status}).`;
-                    if (xhr.status === 401 || xhr.status === 403) {
-                        msg = xhr.responseJSON?.message || "Access denied.";
+            closeModalThen('modalDelete', () => {
+                $.ajax({
+                    url:     `/api/user/DeleteUser/${userId}`,
+                    type:    'DELETE',
+                    headers: { 'RequestVerificationToken': getToken() },
+                    success: (res) => {
+                        queueNotif(res.message || 'User deleted successfully.', 'success');
+                        location.reload();
+                    },
+                    error: (xhr) => {
+                        let msg = xhr.responseJSON?.message || `Server error (${xhr.status}).`;
+                        if (xhr.status === 401 || xhr.status === 403) msg = xhr.responseJSON?.message || 'Access denied.';
+                        showNotif(msg, 'danger');
                     }
-                    alert(msg);
-                }
+                });
             });
         }
 
-        // ── Clear Add Modal on Close ───────────────────────────────────
-        document.getElementById("modalAddUser").addEventListener("hidden.bs.modal", () => {
-            document.getElementById("addFullname").value  = "";
-            document.getElementById("addUsername").value  = "";
-            document.getElementById("addEmail").value     = "";
-            document.getElementById("addRole").value      = "";
-            document.getElementById("addIsActive").checked = true;
-        });
     </script>
 }

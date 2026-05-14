@@ -1,0 +1,263 @@
+﻿@page
+@model ReportSystem.Pages.Admin.MasterMachineModel
+@{
+    ViewData["Title"] = "Master Machine";
+}
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Xsrf
+@functions {
+    public void ConfigureAntiforgeryToken()
+    {
+        ViewData["RequestVerificationToken"] = Xsrf.GetAndStoreTokens(HttpContext).RequestToken;
+    }
+}
+@{
+    ConfigureAntiforgeryToken();
+    @Html.AntiForgeryToken()
+}
+
+<div class="container-body">
+
+    <!-- Breadcrumb -->
+    <div class="row mb-2">
+        <div class="col-12">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="~/Admin/Main">Home</a></li>
+                <li class="breadcrumb-item active">Master Machine</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <div class="row mb-2">
+        <div class="col-6">
+            <h4>Machine Management</h4>
+        </div>
+        <div class="col-6">
+            <button type="button" class="btn btn-primary float-end"
+                    data-bs-toggle="modal" data-bs-target="#modalAddMachine">
+                <i class="fas fa-plus me-1"></i> New Machine
+            </button>
+        </div>
+    </div>
+
+    <!-- Success alert -->
+    @if (!string.IsNullOrWhiteSpace(Model.SuccessMessage))
+    {
+        <div class="alert alert-success py-2">@Model.SuccessMessage</div>
+    }
+
+    <!-- Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table initDataTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Machine Name</th>
+                                    <th>Area</th>
+                                    <th>Type</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (!Model.Machines.Any())
+                                {
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted py-4">No machines found.</td>
+                                    </tr>
+                                }
+                                else
+                                {
+                                    foreach (var m in Model.Machines)
+                                    {
+                                        <tr>
+                                            <td class="fw-semibold">@m.MachineName</td>
+                                            <td>@m.Area</td>
+                                            <td>@m.Type</td>
+                                            <td style="white-space: nowrap;">
+                                                <button type="button" class="btn btn-warning btn-sm text-dark"
+                                                        onclick="openEditModal(@m.MachineId)">
+                                                    Edit
+                                                </button>
+                                                <button type="button" class="btn btn-danger btn-sm"
+                                                        onclick="openDeleteModal(@m.MachineId, '@Html.Raw(Html.Encode(m.MachineName))')">
+                                                    Delete
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ── Modal: Add Machine ──────────────────────────────────────── -->
+<div class="modal fade" id="modalAddMachine" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold">Add New Machine</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" asp-page-handler="Save" id="formAdd">
+                <input type="hidden" name="EditId" value="" />
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Machine Name</label>
+                        <input type="text" class="form-control" id="addMachineName"
+                               name="Input.MachineName" placeholder="e.g. CNC-01" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Area</label>
+                        <input type="text" class="form-control" id="addArea"
+                               name="Input.Area" placeholder="e.g. Production Floor A" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Type</label>
+                        <input type="text" class="form-control" id="addType"
+                               name="Input.Type" placeholder="e.g. Lathe" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="submitAdd()">Add Machine</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ── Modal: Edit Machine ──────────────────────────────────────── -->
+<div class="modal fade" id="modalEditMachine" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold">Edit Machine</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" asp-page-handler="Save" id="formEdit">
+                <input type="hidden" id="editMachineId" name="EditId" />
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Machine Name</label>
+                        <input type="text" class="form-control" id="editMachineName"
+                               name="Input.MachineName" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Area</label>
+                        <input type="text" class="form-control" id="editArea"
+                               name="Input.Area" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Type</label>
+                        <input type="text" class="form-control" id="editType"
+                               name="Input.Type" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-warning text-dark" onclick="submitEdit()">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ── Modal: Delete Machine ──────────────────────────────────────── -->
+<div class="modal fade" id="modalDeleteMachine" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold">Delete Machine</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                Are you sure you want to delete <strong id="deleteMachineLabel"></strong>?
+                This cannot be undone.
+            </div>
+            <form method="post" asp-page-handler="Delete" id="formDelete">
+                <input type="hidden" id="deleteMachineId" name="machineId" />
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // DataTable init
+        $(document).ready(function () {
+            $('table.initDataTable').DataTable({
+                pageLength: 10,
+                lengthMenu: [5, 10, 25, 50],
+                columnDefs: [{ orderable: false, targets: 3 }]
+            });
+        });
+
+        // Serialized machine list for client-side modal population
+        const machines = @Html.Raw(Json.Serialize(Model.Machines));
+
+        // ── Add ───────────────────────────────────────────────────
+        function submitAdd() {
+            const name = document.getElementById('addMachineName').value.trim();
+            const area = document.getElementById('addArea').value.trim();
+            const type = document.getElementById('addType').value.trim();
+
+            if (!name || !area || !type) {
+                alert('Please fill in all fields.');
+                return;
+            }
+            document.getElementById('formAdd').submit();
+        }
+
+        // Clear Add modal on close
+        document.getElementById('modalAddMachine').addEventListener('hidden.bs.modal', () => {
+            document.getElementById('addMachineName').value = '';
+            document.getElementById('addArea').value        = '';
+            document.getElementById('addType').value        = '';
+        });
+
+        // ── Edit ──────────────────────────────────────────────────
+        function openEditModal(machineId) {
+            const m = machines.find(x => x.machineId === machineId);
+            if (!m) return;
+
+            document.getElementById('editMachineId').value   = m.machineId;
+            document.getElementById('editMachineName').value = m.machineName;
+            document.getElementById('editArea').value        = m.area;
+            document.getElementById('editType').value        = m.type;
+
+            new bootstrap.Modal(document.getElementById('modalEditMachine')).show();
+        }
+
+        function submitEdit() {
+            const name = document.getElementById('editMachineName').value.trim();
+            const area = document.getElementById('editArea').value.trim();
+            const type = document.getElementById('editType').value.trim();
+
+            if (!name || !area || !type) {
+                alert('Please fill in all fields.');
+                return;
+            }
+            document.getElementById('formEdit').submit();
+        }
+
+        // ── Delete ────────────────────────────────────────────────
+        function openDeleteModal(machineId, machineName) {
+            document.getElementById('deleteMachineId').value      = machineId;
+            document.getElementById('deleteMachineLabel').textContent = machineName;
+            new bootstrap.Modal(document.getElementById('modalDeleteMachine')).show();
+        }
+    </script>
+}

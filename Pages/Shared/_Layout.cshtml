@@ -12,6 +12,9 @@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/ReportSystem.styles.css" asp-append-version="true" />
+
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.3.5/css/dataTables.bootstrap5.min.css" />
+
     <style>
         .profile-circle {
             width: 34px;
@@ -36,7 +39,30 @@
     <header>
         <nav class="navbar navbar-expand-sm navbar-light bg-white border-bottom box-shadow mb-3">
             <div class="container">
-                <a class="navbar-brand" asp-area="" asp-page="/Index">Report Desk</a>
+                @{
+                    string homeLink = Url.Page("/Index");
+
+                    if (User.Identity?.IsAuthenticated == true)
+                    {
+                        if (User.IsInRole("Admin") || User.IsInRole("Machine"))
+                        {
+                            homeLink = Url.Page("/Admin/Main");
+                        }
+                        else if (User.IsInRole("Nearmiss"))
+                        {
+                            homeLink = Url.Page("/Admin/ReportList", new { ReportId = "Nearmiss" });
+                        }
+                        else if (User.IsInRole("Suggestion"))
+                        {
+                            homeLink = Url.Page("/Admin/ReportList", new { ReportId = "Suggestion" });
+                        }
+                        else if (User.IsInRole("Kaizen"))
+                        {
+                            homeLink = Url.Page("/Admin/ReportList", new { ReportId = "Kaizen" });
+                        }
+                    }
+                }
+                <a class="navbar-brand" asp-page="@homeLink">Report Desk</a>
                 <div class="ms-auto">
 
                     @if (HttpContextAccessor.HttpContext!.Session.GetString("UserId") != null)
@@ -199,6 +225,10 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+
+    <script src="https://cdn.datatables.net/2.3.5/js/dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/2.3.5/js/dataTables.bootstrap5.min.js"></script>
+
     @await RenderSectionAsync("Scripts", required: false)
 
     <script>

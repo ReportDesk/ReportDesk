@@ -28,6 +28,9 @@ namespace ReportSystem.Models
         [Column("CREATED_DATE")]
         public DateTime CreatedDate { get; set; }
 
+        [Column("UPDATED_DATE")]
+        public DateTime? UpdatedDate { get; set; }
+        
         [Column("IS_ACTIVE")]
         public byte IsActive { get; set; }
 

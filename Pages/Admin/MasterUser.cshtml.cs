@@ -62,7 +62,10 @@ namespace ReportSystem.Pages.Admin
             public string Username { get; set; } = string.Empty;
             public string Fullname { get; set; } = string.Empty;
             public string Role { get; set; } = string.Empty;
+            public string Email { get; set; } = string.Empty;
             public bool IsActive { get; set; }
+            public DateTime CreatedDate { get; set; }
+            public DateTime? UpdatedDate { get; set; }
         }
 
         // -- Handlers
@@ -211,7 +214,10 @@ namespace ReportSystem.Pages.Admin
                     Username = u.Username,
                     Fullname = u.Fullname,
                     Role = u.Role,
-                    IsActive = u.IsActive == 1
+                    Email = u.Email,
+                    IsActive = u.IsActive == 1,
+                    CreatedDate = u.CreatedDate,
+                    UpdatedDate = u.UpdatedDate
                 })
                 .ToListAsync(ct);
 

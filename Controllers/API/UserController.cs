@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.EntityFrameworkCore;
+using ReportSystem.Filters;
 using ReportSystem.Models;
 
 namespace ReportSystem.Controllers.API
@@ -8,7 +8,8 @@ namespace ReportSystem.Controllers.API
     [ApiController]
     [Route("api/user")]
     [Produces("application/json")]
-    public class UserController : ControllerBase 
+    [SessionAuthorize] // ← All endpoints: must be logged in
+    public class UserController : ControllerBase
     {
         private readonly AppDbContext _context;
         private readonly ILogger<UserController> _logger;
@@ -19,15 +20,21 @@ namespace ReportSystem.Controllers.API
             _logger = logger;
         }
 
+        // ── DTOs ──────────────────────────────────────────────────────────────
+
         public class AddEditUserForm
         {
             public int? UserId { get; set; }
             public string Fullname { get; set; } = "";
             public string Username { get; set; } = "";
             public string Email { get; set; } = "";
-            public string Password { get; set; } = "";
             public string Role { get; set; } = "";
             public string IsActive { get; set; } = "1";
+        }
+
+        public class ResetPasswordForm
+        {
+            public string Username { get; set; } = "";
         }
 
         public class ChangePasswordForm
@@ -37,21 +44,30 @@ namespace ReportSystem.Controllers.API
             public string ConfirmPassword { get; set; } = "";
         }
 
-        // GET /api/user/GetUsers
+        private static readonly string[] AllowedRoles =
+            { "Admin", "Machine", "Nearmiss", "Suggestion", "Kaizen" };
+
+        // ── GET /api/user/GetUsers  [Admin] ───────────────────────────────────
+
         [HttpGet("GetUsers")]
+        [SessionAuthorize("Admin")]
         public async Task<IActionResult> GetUsers()
         {
             try
             {
                 var users = await _context.MasterUsers
+                    .AsNoTracking()
+                    .OrderBy(u => u.Username)
                     .Select(u => new
                     {
                         u.UserId,
+                        u.Fullname,
                         u.Username,
                         u.Email,
                         u.Role,
                         u.IsActive,
-                        u.CreatedDate
+                        u.CreatedDate,
+                        u.UpdatedDate
                     })
                     .ToListAsync();
 
@@ -64,22 +80,27 @@ namespace ReportSystem.Controllers.API
             }
         }
 
-        // GET /api/user/GetUser/{id}
-        [HttpGet("GetUser/{id}")]
+        // ── GET /api/user/GetUser/{id}  [Admin] ───────────────────────────────
+
+        [HttpGet("GetUser/{id:int}")]
+        [SessionAuthorize("Admin")]
         public async Task<IActionResult> GetUser(int id)
         {
             try
             {
                 var user = await _context.MasterUsers
+                    .AsNoTracking()
                     .Where(u => u.UserId == id)
                     .Select(u => new
                     {
                         u.UserId,
+                        u.Fullname,
                         u.Username,
                         u.Email,
                         u.Role,
                         u.IsActive,
-                        u.CreatedDate
+                        u.CreatedDate,
+                        u.UpdatedDate
                     })
                     .FirstOrDefaultAsync();
 
@@ -95,8 +116,10 @@ namespace ReportSystem.Controllers.API
             }
         }
 
-        // POST /api/user/AddEditUser
+        // ── POST /api/user/AddEditUser  [Admin] ───────────────────────────────
+
         [HttpPost("AddEditUser")]
+        [SessionAuthorize("Admin")]
         public async Task<IActionResult> AddEditUser([FromBody] AddEditUserForm form)
         {
             if (form == null ||
@@ -107,75 +130,103 @@ namespace ReportSystem.Controllers.API
                 return BadRequest(new { message = "Please fill all required fields before submitting." });
             }
 
-            var isNew = form.UserId == null || form.UserId == 0;
-            var isActiveNormalized = form.IsActive?.Trim() == "1" ? (byte)1 : (byte)0;
+            if (!AllowedRoles.Contains(form.Role.Trim()))
+                return BadRequest(new { message = "Invalid role selected." });
+
+            var isNew = form.UserId is null or 0;
+            var active = form.IsActive?.Trim() == "1" ? (byte)1 : (byte)0;
             var now = DateTime.Now;
-            var defaultPass = "ReportDesk123!";
 
             try
             {
                 if (isNew)
                 {
-                    var duplicateExists = await _context.MasterUsers
+                    // ── Add ──────────────────────────────────────────────────
+                    bool duplicateUsername = await _context.MasterUsers
                         .AnyAsync(u => u.Username == form.Username.Trim());
 
-                    if (duplicateExists)
+                    if (duplicateUsername)
                         return BadRequest(new { message = "Username already exists." });
 
-                    var user = new MasterUser
+                    bool duplicateEmail = await _context.MasterUsers
+                        .AnyAsync(u => u.Email == form.Email.Trim());
+
+                    if (duplicateEmail)
                     {
+                        return BadRequest(new { message = "Email already exists." });
+                    }
+
+                    _context.MasterUsers.Add(new MasterUser
+                    {
+                        Fullname = form.Fullname.Trim(),
                         Username = form.Username.Trim(),
                         Email = form.Email.Trim(),
-                        Password = BCrypt.Net.BCrypt.HashPassword(defaultPass),
+                        Password = BCrypt.Net.BCrypt.HashPassword("ReportDesk123!"),
                         Role = form.Role.Trim(),
-                        IsActive = isActiveNormalized,
-                        CreatedDate = now
-                    };
+                        IsActive = active,
+                        CreatedDate = now,
+                        UpdatedDate = now
+                    });
 
-                    _context.MasterUsers.Add(user);
                     await _context.SaveChangesAsync();
-
                     return Ok(new { message = "User successfully added." });
                 }
                 else
                 {
+                    // ── Edit ─────────────────────────────────────────────────
                     var user = await _context.MasterUsers
                         .FirstOrDefaultAsync(u => u.UserId == form.UserId);
 
                     if (user == null)
                         return NotFound(new { message = "User not found." });
 
-                    var duplicateExists = await _context.MasterUsers
-                        .AnyAsync(u => u.Username == form.Username.Trim() && u.UserId != form.UserId);
+                    bool duplicateUsername = await _context.MasterUsers
+                        .AnyAsync(u => u.Username == form.Username.Trim()
+                                    && u.UserId != form.UserId);
 
-                    if (duplicateExists)
+                    if (duplicateUsername)
                         return BadRequest(new { message = "Username already exists." });
+
+                    bool duplicateEmail = await _context.MasterUsers
+                        .AnyAsync(u => u.Email == form.Email.Trim()
+                                    && u.UserId != form.UserId);
+
+                    if (duplicateEmail)
+                    {
+                        return BadRequest(new { message = "Email already exists." });
+                    }
 
                     user.Fullname = form.Fullname.Trim();
                     user.Username = form.Username.Trim();
                     user.Email = form.Email.Trim();
                     user.Role = form.Role.Trim();
-                    user.IsActive = isActiveNormalized;
+                    user.IsActive = active;
+                    user.UpdatedDate = now;
 
                     await _context.SaveChangesAsync();
-
                     return Ok(new { message = "User successfully updated." });
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error saving user (username: {Username})", form.Username);
+                _logger.LogError(ex, "Error saving user {Username}", form.Username);
                 return StatusCode(500, new { message = "An error occurred.", error = ex.Message });
             }
         }
 
-        // DELETE /api/user/DeleteUser/{id}
-        [HttpDelete("DeleteUser/{id}")]
+        // ── DELETE /api/user/DeleteUser/{id}  [Admin] ─────────────────────────
+
+        [HttpDelete("DeleteUser/{id:int}")]
+        [SessionAuthorize("Admin")]
         public async Task<IActionResult> DeleteUser(int id)
         {
+            // Guard: admin cannot delete their own account
+            if (id == GetCurrentUserId())
+                return BadRequest(new { message = "You cannot delete your own account." });
+
             try
             {
-                var user = await _context.MasterUsers.FirstOrDefaultAsync(u => u.UserId == id);
+                var user = await _context.MasterUsers.FindAsync(id);
 
                 if (user == null)
                     return NotFound(new { message = "User not found." });
@@ -192,28 +243,59 @@ namespace ReportSystem.Controllers.API
             }
         }
 
-        // CHANGE PASSWORD /api/user/ChangePassword
+        // ── POST /api/user/ResetPassword  [Admin] ─────────────────────────────
+
+        [HttpPost("ResetPassword")]
+        [SessionAuthorize("Admin")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordForm form)
+        {
+            if (string.IsNullOrWhiteSpace(form?.Username))
+                return BadRequest(new { message = "Username is required." });
+
+            try
+            {
+                var user = await _context.MasterUsers
+                    .FirstOrDefaultAsync(u => u.Username == form.Username.Trim());
+
+                if (user == null)
+                    return NotFound(new { message = "User not found." });
+
+                user.Password = BCrypt.Net.BCrypt.HashPassword("ReportDesk123!");
+                user.UpdatedDate = DateTime.Now;
+
+                await _context.SaveChangesAsync();
+                return Ok(new { message = $"Password for '{user.Username}' has been reset." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error resetting password for {Username}", form.Username);
+                return StatusCode(500, new { message = "An error occurred.", error = ex.Message });
+            }
+        }
+
+        // ── POST /api/user/ChangePassword  [Any logged-in user] ──────────────
+
         [HttpPost("ChangePassword")]
         public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordForm form)
         {
             if (string.IsNullOrWhiteSpace(form.OldPassword))
-                return BadRequest(new { message = "Old password cannot be empty" });
+                return BadRequest(new { message = "Old password cannot be empty." });
 
             if (string.IsNullOrWhiteSpace(form.NewPassword))
-                return BadRequest(new { message = "New password cannot be empty" });
+                return BadRequest(new { message = "New password cannot be empty." });
 
             if (form.NewPassword.Length < 6)
-                return BadRequest(new { message = "Password must be at least 6 characters long" });
+                return BadRequest(new { message = "Password must be at least 6 characters long." });
 
             if (form.NewPassword.Length > 100)
-                return BadRequest(new { message = "Password is too long" });
+                return BadRequest(new { message = "Password is too long." });
 
             if (form.NewPassword != form.ConfirmPassword)
-                return BadRequest(new { message = "Password confirmation does not match" });
+                return BadRequest(new { message = "Password confirmation does not match." });
 
             var userId = GetCurrentUserId();
             if (userId == 0)
-                return Unauthorized(new { message = "You are not logged in.", redirect = "/Login" });
+                return Unauthorized(new { message = "Session expired. Please log in again.", redirect = "/Login" });
 
             try
             {
@@ -223,28 +305,32 @@ namespace ReportSystem.Controllers.API
                     return NotFound(new { message = "User not found." });
 
                 if (!BCrypt.Net.BCrypt.Verify(form.OldPassword, user.Password))
-                    return BadRequest(new { message = "Old password is incorrect" });
+                    return BadRequest(new { message = "Old password is incorrect." });
 
-                if (BCrypt.Net.BCrypt.Verify(form.NewPassword, user.Password) || form.NewPassword == form.OldPassword)
-                    return BadRequest(new { message = "New password must be different from your current password" });
+                if (BCrypt.Net.BCrypt.Verify(form.NewPassword, user.Password))
+                    return BadRequest(new { message = "New password must be different from your current password." });
 
                 user.Password = BCrypt.Net.BCrypt.HashPassword(form.NewPassword);
+                user.UpdatedDate = DateTime.Now;
+
                 await _context.SaveChangesAsync();
 
                 HttpContext.Session.Clear();
-                return Ok(new { message = "Password change successfully. Please log in again", redirect = "/Login" });
+                return Ok(new { message = "Password changed successfully. Please log in again.", redirect = "/Login" });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error changing password for user {id}, userId");
-                return StatusCode(500, new { message = "An error occured.", error = ex.Message });
+                _logger.LogError(ex, "Error changing password for user {UserId}", userId);
+                return StatusCode(500, new { message = "An error occurred.", error = ex.Message });
             }
         }
 
+        // ── Helpers ───────────────────────────────────────────────────────────
+
         private int GetCurrentUserId()
         {
-            var userIdStr = HttpContext.Session.GetString("UserId");
-            return int.TryParse(userIdStr, out var userId) ? userId : 0;
+            var s = HttpContext.Session.GetString("UserId");
+            return int.TryParse(s, out var id) ? id : 0;
         }
     }
 }

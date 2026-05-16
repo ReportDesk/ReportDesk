@@ -15,31 +15,29 @@
 
         <!-- Machine Report -->
         <div class="col-lg-4 mb-4">
-            <a href="/Admin/ReportList?ReportType=Machine" class="card border-0 shadow-sm text-decoration-none h-100">
-                <div class="card-img-top d-flex align-items-center justify-content-center bg-success bg-opacity-10 p-4" style="height: 160px;">
-                    <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/2699.svg"
-                         alt="Machine Report"
-                         style="height: 90px; width: 90px; object-fit: contain;">
-                </div>
-                <div class="card-body p-3">
-                    <h6 class="card-title fw-bold text-dark mb-1">Machine Report List</h6>
+            <a href="/Admin/ReportList?ReportType=Machine" class="card border-0 rounded shadow text-decoration-none" style="border: 1px solid #e0e0e0 !important;">
+                <img class="card-img-top rounded-top"
+                     src="~/asset/Machine.svg"
+                     alt="Machine Report"
+                     style="height: 200px; width: 100%; object-fit: contain; background-color: #fff9ed; padding: 1rem;">
+                <div class="card-body p-3" style="border-top: 1px solid #e0e0e0;">
+                    <h5 class="card-title fw-bold text-dark mb-1">Machine Report List</h5>
                     <small class="text-muted">Menindaklanjuti mesin atau peralatan yang rusak</small>
                 </div>
             </a>
         </div>
 
-        @if(Model.UserRole == "1" || Model.UserRole?.ToLower() == "admin")
+        @if (Model.UserRole == "1" || Model.UserRole?.ToLower() == "admin")
         {
             <!-- Near-Miss Report -->
             <div class="col-lg-4 mb-4">
-                <a href="/Admin/ReportList?ReportType=NearMiss" class="card border-0 shadow-sm text-decoration-none h-100">
-                    <div class="card-img-top d-flex align-items-center justify-content-center bg-warning bg-opacity-10 p-4" style="height: 160px;">
-                        <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/26a0.svg"
-                             alt="Near-Miss Report"
-                             style="height: 90px; width: 90px; object-fit: contain;">
-                    </div>
-                    <div class="card-body p-3">
-                        <h6 class="card-title fw-bold text-dark mb-1">Near-Miss Report List</h6>
+                <a href="/Admin/ReportList?ReportType=NearMiss" class="card border-0 rounded shadow text-decoration-none" style="border: 1px solid #e0e0e0 !important;">
+                    <img class="card-img-top rounded-top"
+                         src="~/asset/Nearmiss.svg"
+                         alt="Near-Miss Report"
+                         style="height: 200px; width: 100%; object-fit: contain; background-color: #fff9ed; padding: 1rem;">
+                    <div class="card-body p-3" style="border-top: 1px solid #e0e0e0;">
+                        <h5 class="card-title fw-bold text-dark mb-1">Near-Miss Report List</h5>
                         <small class="text-muted">Menindaklanjuti temuan kondisi yang berpotensi bahaya</small>
                     </div>
                 </a>
@@ -47,14 +45,13 @@
 
             <!-- Suggestion -->
             <div class="col-lg-4 mb-4">
-                <a href="/Admin/ReportList?ReportType=Suggestion" class="card border-0 shadow-sm text-decoration-none h-100">
-                    <div class="card-img-top d-flex align-items-center justify-content-center bg-info bg-opacity-10 p-4" style="height: 160px;">
-                        <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f4a1.svg"
-                             alt="Suggestion"
-                             style="height: 90px; width: 90px; object-fit: contain;">
-                    </div>
-                    <div class="card-body p-3">
-                        <h6 class="card-title fw-bold text-dark mb-1">Suggestion List</h6>
+                <a href="/Admin/ReportList?ReportType=Suggestion" class="card border-0 rounded shadow text-decoration-none" style="border: 1px solid #e0e0e0 !important;">
+                    <img class="card-img-top rounded-top"
+                         src="~/asset/Suggestion.svg"
+                         alt="Suggestion"
+                         style="height: 200px; width: 100%; object-fit: contain; background-color: #fff9ed; padding: 1rem;">
+                    <div class="card-body p-3" style="border-top: 1px solid #e0e0e0;">
+                        <h5 class="card-title fw-bold text-dark mb-1">Suggestion List</h5>
                         <small class="text-muted">Menindaklanjuti ide perbaikan di segala bidang</small>
                     </div>
                 </a>
@@ -62,14 +59,13 @@
 
             <!-- Kaizen Report -->
             <div class="col-lg-4 mb-4">
-                <a href="/Admin/ReportList?ReportType=Kaizen" class="card border-0 shadow-sm text-decoration-none h-100">
-                    <div class="card-img-top d-flex align-items-center justify-content-center bg-primary bg-opacity-10 p-4" style="height: 160px;">
-                        <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f4c8.svg"
-                             alt="Kaizen Report"
-                             style="height: 90px; width: 90px; object-fit: contain;">
-                    </div>
-                    <div class="card-body p-3">
-                        <h6 class="card-title fw-bold text-dark mb-1">Kaizen Report List</h6>
+                <a href="/Admin/ReportList?ReportType=Kaizen" class="card border-0 rounded shadow text-decoration-none" style="border: 1px solid #e0e0e0 !important;">
+                    <img class="card-img-top rounded-top"
+                         src="~/asset/Kaizen.svg"
+                         alt="Kaizen Report"
+                         style="height: 200px; width: 100%; object-fit: contain; background-color: #fff9ed; padding: 1rem;">
+                    <div class="card-body p-3" style="border-top: 1px solid #e0e0e0;">
+                        <h5 class="card-title fw-bold text-dark mb-1">Kaizen Report List</h5>
                         <small class="text-muted">Menindaklanjuti laporan kaizen</small>
                     </div>
                 </a>
@@ -77,30 +73,28 @@
 
             <!-- Master User (Admin Only) -->
             <div class="col-lg-4 mb-4">
-                <a href="/Admin/MasterUser" class="card border-0 shadow-sm text-decoration-none h-100">
-                    <div class="card-img-top d-flex align-items-center justify-content-center bg-primary bg-opacity-10 p-4" style="height: 160px;">
-                        <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f464.svg"
-                             alt="Master User"
-                             style="height: 90px; width: 90px; object-fit: contain;">
-                    </div>
-                    <div class="card-body p-3">
-                        <h6 class="card-title fw-bold text-dark mb-1">Master User</h6>
+                <a href="/Admin/MasterUser" class="card border-0 rounded shadow text-decoration-none" style="border: 1px solid #e0e0e0 !important;">
+                    <img class="card-img-top rounded-top"
+                         src="~/asset/Admin.svg"
+                         alt="Master User"
+                         style="height: 200px; width: 100%; object-fit: contain; background-color: #fff9ed; padding: 1rem;">
+                    <div class="card-body p-3" style="border-top: 1px solid #e0e0e0;">
+                        <h5 class="card-title fw-bold text-dark mb-1">Master User</h5>
                         <small class="text-muted">Kelola data pengguna sistem</small>
                     </div>
                 </a>
             </div>
         }
-        
+
         <!-- Master Machine -->
         <div class="col-lg-4 mb-4">
-            <a href="/Admin/MasterMachine" class="card border-0 shadow-sm text-decoration-none h-100">
-                <div class="card-img-top d-flex align-items-center justify-content-center bg-danger bg-opacity-10 p-4" style="height: 160px;">
-                    <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/svg/1f527.svg"
-                         alt="Master Machine"
-                         style="height: 90px; width: 90px; object-fit: contain;">
-                </div>
-                <div class="card-body p-3">
-                    <h6 class="card-title fw-bold text-dark mb-1">Master Machine</h6>
+            <a href="/Admin/MasterMachine" class="card border-0 rounded shadow text-decoration-none" style="border: 1px solid #e0e0e0 !important;">
+                <img class="card-img-top rounded-top"
+                     src="~/asset/Machine_List.svg"
+                     alt="Master Machine"
+                     style="height: 200px; width: 100%; object-fit: contain; background-color: #fff9ed; padding: 1rem;">
+                <div class="card-body p-3" style="border-top: 1px solid #e0e0e0;">
+                    <h5 class="card-title fw-bold text-dark mb-1">Master Machine</h5>
                     <small class="text-muted">Kelola data mesin dan peralatan</small>
                 </div>
             </a>

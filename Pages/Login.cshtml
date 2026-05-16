@@ -12,71 +12,299 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] — Report Desk</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+
     <style>
-        body {
-            background-color: #f8f9fa;
-            min-height: 100vh;
+        :root {
+            --cream: #fff4db;
+            --dark: #263238;
+            --white: #FFFFFF;
+            --yellow: #FFC100;
+        }
+
+        html, body {
+            background: linear-gradient(270deg, var(--cream) 0%, #fff8e1 55%, var(--white) 100%);
+        }
+
+        @@media only screen and (max-width: 767px) {
+            .row-left {
+                display: none !important;
+            }
+
+            .row-right {
+                padding: 2rem;
+            }
+        }
+
+        @@media only screen and (max-width: 425px) {
+            .row-right {
+                padding: 1rem;
+            }
+        }
+
+        /* ── Card / Form ── */
+        .login-card {
+            border-radius: 24px;
+            background: var(--white);
+            box-shadow: 0 4px 24px rgba(38, 50, 56, 0.10);
+            padding: 2rem;
+        }
+
+        /* ── Nav badge ── */
+        .nav-login {
+            padding-left: 0;
             display: flex;
-            align-items: center;
             justify-content: center;
+        }
+
+        .nav-login-badge {
+            list-style: none;
+            font-weight: 600;
+            font-size: .85rem;
+            color: var(--white);
+            background-color: var(--dark);
+            padding: .4rem 1.25rem;
+            border-radius: 999px;
+        }
+
+        /* ── Labels & headings ── */
+        .form-label {
+            color: var(--dark);
+            font-weight: 600;
+        }
+
+        h3.form-title {
+            color: var(--dark);
+            font-weight: 700;
+        }
+
+        p.form-subtitle {
+            color: #607d8b;
+        }
+
+        /* ── Inputs ── */
+        .form-control:focus {
+            border-color: var(--yellow);
+            box-shadow: 0 0 0 .2rem rgba(255, 193, 0, .25);
+        }
+
+        /* ── Button ── */
+        .btn-login {
+            background-color: var(--dark);
+            border-color: var(--dark);
+            color: var(--white);
+            font-weight: 600;
+            border-radius: 8px;
+            transition: background-color .2s, border-color .2s;
+        }
+
+            .btn-login:hover, .btn-login:focus {
+                background-color: var(--yellow);
+                border-color: var(--yellow);
+                color: var(--dark);
+            }
+
+        /* ── Toggle password button ── */
+        .btn-outline-secondary {
+            border-color: #dee2e6;
+            color: #6c757d;
+        }
+
+            .btn-outline-secondary:hover {
+                background-color: var(--cream);
+                border-color: var(--cream);
+                color: var(--dark);
+            }
+
+        /* ── Footer text ── */
+        .footer-copy {
+            font-size: .75rem;
+            color: #90a4ae;
+            text-align: center;
+            margin-top: 1rem;
+            line-height: 1.2;
+        }
+
+        /* ── Logo row ── */
+        .logo-row img {
+            width: 2.5rem;
+        }
+
+        .logo-row h6 {
+            color: var(--dark);
+            margin: 0;
+            font-weight: 700;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-12 col-sm-8 col-md-5 col-lg-4">
+    <div class="container-fluid">
+        <div class="row min-vh-100 d-flex align-items-center justify-content-center" style="overflow-y: hidden;">
 
-                <div class="text-center mb-4">
-                    <div class="bg-primary bg-opacity-10 rounded-3 d-inline-flex align-items-center justify-content-center mb-3"
-                         style="width: 52px; height: 52px;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
-                             class="text-primary" viewBox="0 0 16 16">
-                            <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.029 10 8 10c-2.029 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z" />
-                        </svg>
-                    </div>
-                    <h5 class="fw-bold mb-1">Report Desk</h5>
-                    <small class="text-muted">Sign in to your account</small>
+            <!-- Left panel -->
+            <div class="col-lg-5 col-md-6 vh-100 d-table row-left d-none d-md-table">
+                <div class="d-table-cell align-middle text-center">
+                    <img src="~/asset/ReportDesk.svg" class="w-75 m-5" alt="Report Desk Illustration" />
                 </div>
+            </div>
 
-                <div class="card border-0 shadow-sm">
-                    <div class="card-body p-4">
+            <!-- Right panel -->
+            <div class="col-lg-5 col-md-6 col-12 row-right p-4">
+                <div class="login-card">
 
-                        @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+                    <!-- Header row: logo + badge -->
+                    <div class="row mb-4 m-0 d-flex align-items-center logo-row">
+                        <div class="col-5 p-0 d-flex align-items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" fill="#263238" viewBox="0 0 16 16">
+                                <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.029 10 8 10c-2.029 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z" />
+                            </svg>
+                            <h6 class="font-weight-bold m-0">Report Desk</h6>
+                        </div>
+                        <div class="col-7 d-flex justify-content-end p-0">
+                            <ul class="nav-login m-0">
+                                <li class="nav-login-badge">Login</li>
+                            </ul>
+                        </div>
+                    </div>
+
+
+
+                    <div id="loginView">
+                        <!-- Form heading -->
+                        <div class="form-group mb-3">
+                            <h3 class="form-title">Nice to see you!</h3>
+                            <p class="form-subtitle mt-1 mb-0">Enter your username and password to sign in</p>
+                        </div>
+
+                        <!-- Error message -->
+                        @if (!string.IsNullOrEmpty(Model.ErrorMessage) && Model.ErrorSource == "login")
                         {
-                            <div class="alert alert-danger py-2 mb-3" role="alert">
+                            <div id="loginAlert" class="alert alert-danger py-2 mb-3 d-flex align-items-center justify-content-between" role="alert">
                                 <small>@Model.ErrorMessage</small>
+                                <button type="button" class="btn-close ms-2 flex-shrink-0" data-bs-dismiss="alert" aria-label="Close"></button>
                             </div>
                         }
 
-                        <form method="post">
-                            <div class="mb-3">
-                                <label for="username" class="form-label fw-semibold">Username</label>
-                                <input id="username"
-                                       name="Username"
-                                       type="text"
-                                       class="form-control"
-                                       placeholder="Enter your username"
-                                       autocomplete="username"
-                                       required />
+                        <form method="post" asp-page-handler="">
+                            <div class="form-group mb-3">
+                                <label class="form-label" for="username">Username</label>
+                                <input id="username" name="Username" type="text" class="form-control"
+                                       placeholder="Enter your username" autocomplete="username" required />
                             </div>
 
-                            <div class="mb-4">
-                                <label for="password" class="form-label fw-semibold">Password</label>
+                            <div class="form-group mb-2">
+                                <label class="form-label" for="password">Password</label>
                                 <div class="input-group">
-                                    <input id="password"
-                                           name="Password"
-                                           type="password"
+                                    <input id="password" name="Password" type="password"
                                            class="form-control border-end-0"
                                            placeholder="Enter your password"
-                                           autocomplete="current-password"
-                                           required />
+                                           autocomplete="current-password" required />
                                     <button class="btn btn-outline-secondary border-start-0"
-                                            type="button"
-                                            id="togglePassword"
-                                            tabindex="-1">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                             fill="currentColor" viewBox="0 0 16 16">
+                                            type="button" id="togglePassword" tabindex="-1">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                            <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z" />
+                                            <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="text-end mb-3">
+                                <a href="#" id="forgotPasswordLink" style="font-size: 0.85rem; color: #607d8b; text-decoration: none;">
+                                    Forgot password?
+                                </a>
+                            </div>
+
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-login btn-block">Sign In</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div id="forgotView" style="display: none;">
+                        <div class="form-group mb-3">
+                            <h3 class="form-title">Reset Password</h3>
+                            <p class="form-subtitle mt-1 mb-0">Enter your registered email to reset your password</p>
+                        </div>
+
+                        <!-- Error message -->
+                        @if (!string.IsNullOrEmpty(Model.ErrorMessage) && Model.ErrorSource == "forgot")
+                        {
+                            <div id="forgotAlert" class="alert alert-danger py-2 mb-3 d-flex align-items-center justify-content-between" role="alert">
+                                <small>@Model.ErrorMessage</small>
+                                <button type="button" class="btn-close ms-2 flex-shrink-0" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        }
+
+                        @if (TempData["ForgotSuccess"] != null)
+                        {
+                            <div id="forgotSuccess" class="alert alert-success py-2 mb-3">
+                                <small>@TempData["ForgotSuccess"]</small>
+                            </div>
+                        }
+
+                        <form method="post" asp-page-handler="ForgotPassword">
+                            <div class="form-group mb-3">
+                                <label class="form-label" for="email">Email</label>
+                                <input id="email" name="Email" type="email" class="form-control"
+                                       placeholder="Enter your registered email" required />
+                            </div>
+                            <div class="text-end mb-3">
+                                <a href="#" id="backToLogin" style="font-size: 0.85rem; color: #607d8b; text-decoration: none;">
+                                    ← Back to Login
+                                </a>
+                            </div>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-login btn-block">Send Reset Link</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Reset Password View -->
+                    <div id="resetView" style="display: none;">
+                        <div class="form-group mb-3">
+                            <h3 class="form-title">New Password</h3>
+                            <p class="form-subtitle mt-1 mb-0">Enter and confirm your new password</p>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(Model.ErrorMessage) && Model.ErrorSource == "reset")
+                        {
+                            <div class="alert alert-danger py-2 mb-3 d-flex align-items-center justify-content-between" role="alert">
+                                <small>@Model.ErrorMessage</small>
+                                <button type="button" class="btn-close ms-2 flex-shrink-0" data-bs-dismiss="alert"></button>
+                            </div>
+                        }
+
+                        @if (TempData["ResetSuccess"] != null)
+                        {
+                            <div id="resetSuccess" class="alert alert-success py-2 mb-3">
+                                <small>@TempData["ResetSuccess"]</small>
+                            </div>
+                        }
+
+                        <form method="post" asp-page-handler="ResetPassword">
+                            <input type="hidden" name="Token" value="@Model.ResetToken" />
+
+                            <div class="form-group mb-3">
+                                <label class="form-label">New Password</label>
+                                <div class="input-group">
+                                    <input id="newPassword" name="NewPassword" type="password" class="form-control border-end-0"
+                                           placeholder="Enter new password" required />
+                                    <button class="btn btn-outline-secondary border-start-0" type="button" id="toggleNewPassword" tabindex="-1">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                            <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z" />
+                                            <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="form-group mb-3">
+                                <label class="form-label">Confirm Password</label>
+                                <div class="input-group">
+                                    <input id="confirmPassword" name="ConfirmPassword" type="password" class="form-control border-end-0"
+                                           placeholder="Confirm new password" required />
+                                    <button class="btn btn-outline-secondary border-start-0" type="button" id="toggleConfirmPassword" tabindex="-1">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                                             <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z" />
                                             <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z" />
                                         </svg>
@@ -85,25 +313,99 @@
                             </div>
 
                             <div class="d-grid">
-                                <button type="submit" class="btn btn-primary">Sign In</button>
+                                <button type="submit" class="btn btn-login btn-block">Reset Password</button>
                             </div>
                         </form>
+                    </div>
 
+
+                    <div class="footer-copy mt-3">
+                        <span>Copyright ©<span id="year"></span> <b>Report Desk</b></span>
                     </div>
                 </div>
 
-                <p class="text-center text-muted mt-3" style="font-size: 0.8rem;">
+                <p class="text-center mt-3" style="font-size: 0.78rem; color: #90a4ae;">
                     Contact your admin if you have trouble signing in.
                 </p>
-
             </div>
+
         </div>
     </div>
 
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.getElementById('togglePassword').addEventListener('click', function () {
             const input = document.getElementById('password');
             input.type = input.type === 'password' ? 'text' : 'password';
+        });
+
+        document.getElementById('year').textContent = new Date().getFullYear();
+
+        document.getElementById('forgotPasswordLink').addEventListener('click', function (e) {
+            e.preventDefault();
+            document.getElementById('loginView').style.display = 'none';
+            document.getElementById('forgotView').style.display = 'block';
+        });
+
+        document.getElementById('backToLogin').addEventListener('click', function (e) {
+            e.preventDefault();
+            document.getElementById('forgotView').style.display = 'none';
+            document.getElementById('loginView').style.display = 'block';
+        });
+
+        document.getElementById('toggleNewPassword').addEventListener('click', function () {
+            const input = document.getElementById('newPassword');
+            input.type = input.type === 'password' ? 'text' : 'password';
+        });
+
+        document.getElementById('toggleConfirmPassword').addEventListener('click', function () {
+            const input = document.getElementById('confirmPassword');
+            input.type = input.type === 'password' ? 'text' : 'password';
+        });
+
+        const resetToken = '@Model.ResetToken';
+        if (resetToken) {
+            document.getElementById('loginView').style.display = 'none';
+            document.getElementById('resetView').style.display = 'block';
+        }
+
+        const errorSource = '@Model.ErrorSource';
+        if (errorSource === 'forgot') {
+            document.getElementById('loginView').style.display = 'none';
+            document.getElementById('forgotView').style.display = 'block';
+        }
+
+        const resetSuccess = document.getElementById('resetSuccess');
+        if (resetSuccess) {
+            document.getElementById('loginView').style.display = 'none';
+            document.getElementById('resetView').style.display = 'block';
+            setTimeout(function () {
+                window.location.href = '/Login';
+            }, 3000);
+        }
+
+        const forgotSuccess = document.getElementById('forgotSuccess');
+        if (forgotSuccess) {
+            document.getElementById('loginView').style.display = 'none';
+            document.getElementById('forgotView').style.display = 'block';
+        }
+
+        document.querySelectorAll('form').forEach(function(form) {
+            form.addEventListener('submit', function() {
+                form.querySelector('button[type="submit"]').disabled = true;
+            });
+        });
+
+         // Auto-dismiss alerts after 4 seconds
+        ['loginAlert', 'forgotAlert'].forEach(function(id) {
+            const el = document.getElementById(id);
+            if (el) {
+                setTimeout(function() {
+                    const bsAlert = bootstrap.Alert.getOrCreateInstance(el);
+                    bsAlert.close();
+                }, 4000);
+            }
         });
     </script>
 </body>

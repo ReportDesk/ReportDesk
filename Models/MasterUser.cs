@@ -34,6 +34,12 @@ namespace ReportSystem.Models
         [Column("IS_ACTIVE")]
         public byte IsActive { get; set; }
 
+        [Column("PASSWORD_RESET_TOKEN")]
+        public string? PasswordResetToken { get; set; }
+
+        [Column("PASSWORD_RESET_EXPIRY")]
+        public DateTime? PasswordResetExpiry { get; set; }
+
         [NotMapped]
         public bool IsActiveFlag
         {

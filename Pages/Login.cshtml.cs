@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 using ReportSystem.Controllers;
 using ReportSystem.Models;
+using ReportSystem.Services;
 using System.Security.Claims;
 
 
@@ -16,10 +17,12 @@ namespace ReportSystem.Pages
     public class LoginModel : PageModel
     {
         private readonly AppDbContext _context;
+        private readonly IEmailService _emailService;
 
-        public LoginModel(AppDbContext context)
+        public LoginModel(AppDbContext context, IEmailService emailService)
         {
             _context = context;
+            _emailService = emailService;
         }
 
         [BindProperty]
@@ -31,7 +34,21 @@ namespace ReportSystem.Pages
         [BindProperty]
         public string ErrorSource { get; set; } = string.Empty;
 
+        [BindProperty]
+        public string Email { get; set; } = string.Empty;
+
+        [BindProperty]
+        public string Token { get; set; } = string.Empty;
+
+        [BindProperty]
+        public string NewPassword { get; set; } = string.Empty;
+
+        [BindProperty]
+        public string ConfirmPassword { get; set; } = string.Empty;
+
         public string? ErrorMessage { get; set; }
+
+        public string? ResetToken { get; set; }
 
         public IActionResult OnGet()
         {
@@ -40,6 +57,7 @@ namespace ReportSystem.Pages
                 return Redirect(GetRedirectUrl(HttpContext.Session.GetString("Role") ?? ""));
             }
 
+            ResetToken = Request.Query["token"];
             return Page();
         }
 
@@ -83,6 +101,63 @@ namespace ReportSystem.Pages
                 return Redirect(GetRedirectUrl(user.Role));
             }
             return Page();
+        }
+
+        public async Task<IActionResult> OnPostForgotPasswordAsync()
+        {
+            ErrorSource = "forgot";
+
+            var user = await _context.MasterUsers
+                .FirstOrDefaultAsync(u => u.Email == Email);
+
+            if (user == null)
+            {
+                ErrorMessage = "Email not found.";
+                return Page();
+            }
+
+            var token = Convert.ToBase64String(Guid.NewGuid().ToByteArray())
+                               .Replace("+", "-").Replace("/", "_").TrimEnd('=');
+            user.PasswordResetToken = token;
+            user.PasswordResetExpiry = DateTime.UtcNow.AddHours(1);
+            await _context.SaveChangesAsync();
+
+            var baseUrl = $"{Request.Scheme}://{Request.Host}";
+            var resetLink = $"{baseUrl}/Login?token={token}";
+
+            await _emailService.SendForgotPasswordAsync(user.Email!, resetLink);
+
+            TempData["ForgotSuccess"] = "Reset link sent! Check your email.";
+            return RedirectToPage("/Login");
+        }
+
+        public async Task<IActionResult> OnPostResetPasswordAsync()
+        {
+            ErrorSource = "reset";
+
+            if (NewPassword != ConfirmPassword)
+            {
+                ErrorMessage = "Password do not match.";
+                return Page();
+            }
+
+            var user = await _context.MasterUsers
+                .FirstOrDefaultAsync(u => u.PasswordResetToken == Token
+                                       && u.PasswordResetExpiry > DateTime.UtcNow);
+
+            if (user == null)
+            {
+                ErrorMessage = "Invalid or expired reset link.";
+                return Page();
+            }
+
+            user.Password = BCrypt.Net.BCrypt.HashPassword(NewPassword);
+            user.PasswordResetToken = null;
+            user.PasswordResetExpiry = null;
+            await _context.SaveChangesAsync();
+
+            TempData["ResetSuccess"] = "Password reset successful! Redirecting to login...";
+            return RedirectToPage("/Login");
         }
 
         protected async Task<MasterUser?> AuthenticateUserAsync(string username, string password)

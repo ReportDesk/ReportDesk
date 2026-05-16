@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using ReportSystem.Helpers;
+using ReportSystem.Services;
 using Supabase;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -8,18 +9,6 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddRazorPages();
 builder.Services.AddControllers();
-
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-    .AddCookie(options =>
-    {
-        options.LoginPath = "/Login";
-        options.LogoutPath = "/Logout";
-        options.ExpireTimeSpan = TimeSpan.FromHours(24);
-        options.SlidingExpiration = true;
-    });
-
-//builder.Services.AddDbContext<AppDbContext>(options =>
-//    options.(builder.Configuration.GetConnectionString("SupabaseDb")));
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("SupabaseDb")));
@@ -32,10 +21,15 @@ builder.Services.AddScoped<Client>(_ =>
         new SupabaseOptions { AutoRefreshToken = true }
     ));
 
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/Login";
+        options.LogoutPath = "/Logout";
+        options.ExpireTimeSpan = TimeSpan.FromHours(24);
+        options.SlidingExpiration = true;
+    });
 builder.Services.AddHttpContextAccessor();
-var connStr = builder.Configuration.GetConnectionString("SupabaseDb");
-Console.WriteLine($"CONNECTION STRING: {connStr}"); // check terminal output
-
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
@@ -47,6 +41,7 @@ builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddScoped<IConfigurationService, ConfigurationService>();
 builder.Services.AddScoped<ReportSystem.Helpers.AppDbConnection>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 

@@ -20,10 +20,10 @@ namespace ReportSystem.Services
         private readonly R2Options _options;
         private readonly ILogger<R2StorageService> _logger;
 
-        public R2StorageService(IAmazonS3 s3, R2Options options, ILogger<R2StorageService> logger )
+        public R2StorageService(IAmazonS3 s3, IOptions<R2Options> options, ILogger<R2StorageService> logger )
         {
             _s3 = s3;
-            _options = options;
+            _options = options.Value;
             _logger = logger;
         }
 
@@ -118,11 +118,5 @@ namespace ReportSystem.Services
         }
 
         public string GetPublicUrl(string key) => $"{_options.PublicBaseUrl.TrimEnd('/')}/{key}";
-
-        public class R2Options
-        {
-            public string BucketName { get; set; } = string.Empty;
-            public string PublicBaseUrl { get; set; } = string.Empty;
-        }
     }
 }

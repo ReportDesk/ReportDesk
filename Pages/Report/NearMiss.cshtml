@@ -30,7 +30,7 @@
                         <div class="row g-3">
                             <div class="col-12">
                                 <label class="form-label fw-semibold">Title</label>
-                                <input class="form-control" placeholder="Enter report title" />
+                                <input name="title" class="form-control" placeholder="Enter report title" />
                                 <span class="text-danger"></span>
                             </div>
                             <div class="col-12 col-md-6">
@@ -39,26 +39,24 @@
                             </div>
                             <div class="col-12 col-md-6">
                                 <label class="form-label fw-semibold">Name</label>
-                                <input class="form-control" placeholder="Enter your name" />
+                                <input name="name" class="form-control" placeholder="Enter your name" />
                                 <span class="text-danger"></span>
                             </div>
                             <div class="col-12">
                                 <label class="form-label fw-semibold">Area</label>
-                                <input class="form-control" placeholder="Enter area" />
+                                <input name="area" class="form-control" placeholder="Enter area" />
                                 <span class="text-danger"></span>
                             </div>
                             <div class="col-12">
                                 <label class="form-label fw-semibold">Description</label>
-                                <textarea class="form-control" rows="6" placeholder="Write the report details"></textarea>
+                                <textarea name="description" class="form-control" rows="6" placeholder="Write the report details"></textarea>
                                 <span class="text-danger"></span>
                             </div>
 
-                            {{!-- Photo upload slot --}}
                             <div class="col-12">
                                 <label class="form-label fw-semibold">Upload Photo</label>
                                 <input id="photoInput" type="file" class="form-control" accept=".jpg,.jpeg,.png" />
                                 <div id="photoStatus" class="form-text text-muted mt-1"></div>
-                                {{!-- Preview shown after successful temp upload --}}
                                 <div id="photoPreview" class="mt-2 d-none">
                                     <div class="position-relative d-inline-block">
                                         <img id="photoPreviewImg" src="" alt="Preview"
@@ -180,7 +178,7 @@
                 submitBtn.textContent = "Submitting…";
 
                 const fd = new FormData(this);
-                fd.append("reportType", "NearMiss");
+                fd.append("ReportType", "NearMiss");
 
                 // Attach the temp key (may be null if user skipped the photo)
                 if (photoTempKey) fd.append("photoTempKey", photoTempKey);

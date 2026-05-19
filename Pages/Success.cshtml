@@ -1,0 +1,38 @@
+﻿@page
+@model ReportSystem.Pages.SuccessModel
+@{
+    ViewData["Title"] = "Success";
+}
+
+
+
+<div class="container d-flex justify-content-center align-items-center min-vh-100 px-3">
+
+    <div class="card border-0 shadow-sm text-center p-4 p-md-5"
+         style="max-width: 500px; width: 100%; border-radius: 20px; background-color: white;">
+
+        <div class="mb-4">
+            <div class="d-inline-flex align-items-center justify-content-center rounded-circle"
+                 style="width: 80px; height: 80px; background-color: #fff3d6;">
+
+                <span style="font-size: 40px; color: #d6a43a;">✓</span>
+            </div>
+        </div>
+
+        <h1 class="h3 fw-bold mb-3" style="color: #c48b1e;">
+            Report Submitted Successfully
+        </h1>
+
+        <p class="mb-4" style="color: #7a6a4f;">
+            Your report has been submitted successfully.
+            Thank you for your submission.
+        </p>
+
+        <a href="/Index"
+           class="btn w-100 py-2 fw-semibold"
+           style="background-color: #e0b04b; color: white; border-radius: 10px;">
+            Back to Home
+        </a>
+
+    </div>
+</div>

@@ -8,7 +8,7 @@ namespace ReportSystem.Models
     {
         [Key]
         [Column("FOLLOW_UP_ID")]
-        public int FollowUpId { get; set; }
+        public int? FollowUpId { get; set; }
 
         [Column("REPORT_ID")]
         public int ReportId { get; set; }

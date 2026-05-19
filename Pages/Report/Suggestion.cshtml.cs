@@ -1,14 +1,26 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 using ReportSystem.Services;
 
-namespace ReportSystem.Pages.Report;
-
-public sealed class SuggestionModel : ReportPageModel
+namespace ReportSystem.Pages.Report
 {
-    public SuggestionModel(AppDbContext db, ReportService reportService) : base(db, reportService)
+    public sealed class SuggestionModel : PageModel
     {
+        private readonly AppDbContext _db;
+        public SuggestionModel(AppDbContext db)
+        {
+            _db = db;
+        }
+
+        public string ReportType = "Suggestion";
+        public string PageHeading => "Suggestion";
+        public string PageDescription => "Melaporkan ide perbaikan di segala bidang.";
+
+        [TempData]
+        public string? SuccessMessage { get; set; }
+
+        public DateTime CurrentTimeDisplay = DateTime.Now;
     }
 
-    public override string ReportType => ReportTypes.Suggestion;
-    public override string PageHeading => "Suggestion";
-    public override string PageDescription => "Melaporkan ide perbaikan di segala bidang.";
 }
+

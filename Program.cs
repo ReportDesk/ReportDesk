@@ -12,8 +12,6 @@ builder.Services.AddControllers();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("SupabaseDb")));
-builder.Services.AddScoped<ReportSystem.Services.ReportService>();
-builder.Services.AddScoped<ReportSystem.Services.IImageVirusScanner, ReportSystem.Services.NoOpImageVirusScanner>();
 builder.Services.AddScoped<Client>(_ =>
     new Client(
         builder.Configuration["Supabase:Url"]!,

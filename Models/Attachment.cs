@@ -11,10 +11,10 @@ namespace ReportSystem.Models
         public int AttachmentId { get; set; }
 
         [Column("REPORT_ID")]
-        public int ReportId { get; set; }
+        public int? ReportId { get; set; }
 
         [Column("FOLLOW_UP_ID")]
-        public int FollowUpId { get; set; }
+        public int? FollowUpId { get; set; }
 
         [Column("FILE_NAME")]
         public string FileName { get; set; } = string.Empty;

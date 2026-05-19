@@ -10,12 +10,10 @@ namespace ReportSystem.Pages.Admin
     public class ReportDetailModel : PageModel
     {
         private readonly AppDbContext _db;
-        private readonly ReportService _reportService;
 
-        public ReportDetailModel(AppDbContext db, ReportService reportService)
+        public ReportDetailModel(AppDbContext db)
         {
             _db = db;
-            _reportService = reportService;
         }
 
         [BindProperty(SupportsGet = true)]

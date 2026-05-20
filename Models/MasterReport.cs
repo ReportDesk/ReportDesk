@@ -14,14 +14,14 @@ namespace ReportSystem.Models
         [Column("REPORT_TYPE")]
         public string ReportType { get; set; } = string.Empty;
 
-        [Column("TITLE")]
-        public string ReportTitle { get; set; } = string.Empty;
-
         [Column("REPORTED_NAME")]
         public string ReportedBy { get; set; } = string.Empty;
 
         [Column("DESCRIPTION")]
         public string Description { get; set; } = string.Empty;
+
+        [Column("DESCRIPTION2")]
+        public string? Description2 { get; set; } = string.Empty;
 
         [Column("SUBMISSION_DATE")]
         public DateTime SubmissionDate { get; set; }

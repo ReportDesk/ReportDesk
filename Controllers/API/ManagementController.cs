@@ -85,7 +85,6 @@ namespace ReportSystem.Controllers.API
                 {
                     reportId = report.ReportId,
                     reportType = report.ReportType,
-                    title = report.ReportTitle,
                     reportedBy = report.ReportedBy,
                     area = report.Area,
                     machineName = report.Machine != null ? report.Machine.MachineName : null,

@@ -39,9 +39,7 @@ public sealed class ReportController : ControllerBase
     {
         // ── 1. Basic field validation ─────────────────────────────────────────
         if (string.IsNullOrWhiteSpace(form.ReportType) ||
-            string.IsNullOrWhiteSpace(form.Title) ||
             string.IsNullOrWhiteSpace(form.Name) ||
-            string.IsNullOrWhiteSpace(form.Area) ||
             string.IsNullOrWhiteSpace(form.Description))
         {
             return BadRequest(new { message = "Please fill all required fields before submitting." });
@@ -93,10 +91,10 @@ public sealed class ReportController : ControllerBase
         var report = new MasterReport
         {
             ReportType = form.ReportType,
-            ReportTitle = form.Title,
             ReportedBy = form.Name,
             Area = form.Area,
             Description = form.Description,
+            Description2 = form.Description2 ?? String.Empty,
             Status = "open",
             SubmissionDate = now,
             UpdatedDate = now,
@@ -161,11 +159,10 @@ public sealed class ReportController : ControllerBase
     {
         // Report type: "NearMiss" | "Suggestion" | "Kaizen" | "Machine"
         public string ReportType { get; set; } = string.Empty;
-
-        public string Title { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
         public string Area { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
+        public string? Description2 { get; set; } = string.Empty;
 
         // Machine reports only
         public int? MachineId { get; set; }

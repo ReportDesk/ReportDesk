@@ -28,39 +28,35 @@
                     <form id="reportForm" method="post">
                         <div class="text-danger mb-2"></div>
                         <div class="row g-3">
-                            <div class="col-12">
-                                <label class="form-label fw-semibold">Title</label>
-                                <input name="title" class="form-control" placeholder="Enter report title" />
-                                <span class="text-danger"></span>
-                            </div>
+
                             <div class="col-12 col-md-6">
-                                <label class="form-label fw-semibold">Time</label>
+                                <label class="form-label fw-semibold">Waktu</label>
                                 <input type="text" class="form-control" value="@Model.CurrentTimeDisplay" readonly />
                             </div>
                             <div class="col-12 col-md-6">
-                                <label class="form-label fw-semibold">Name</label>
+                                <label class="form-label fw-semibold">Pelapor<span class="text-danger">*</span></label>
                                 <input name="name" class="form-control" placeholder="Enter your name" />
                                 <span  class="text-danger"></span>
                             </div>
                             <div class="col-12">
-                                <label class="form-label fw-semibold">Area</label>
+                                <label class="form-label fw-semibold">Area<span class="text-danger">*</span></label>
                                 <input name="area" class="form-control" placeholder="Enter area" />
                                 <span class="text-danger"></span>
                             </div>
                             <div class="col-12">
-                                <label class="form-label fw-semibold">Description</label>
+                                <label class="form-label fw-semibold">Kondisi Sebelum<span class="text-danger">*</span></label>
                                 <textarea name="description" class="form-control" rows="6" placeholder="Write the report details"></textarea>
                                 <span class="text-danger"></span>
                             </div>
                             <div class="col-12">
-                                <label class="form-label fw-semibold">Foto Sebelum</label>
-                                <input id="photoInput" type="file" class="form-control" accept=".jpg,.jpeg,.png" />
-                                <div id="photoStatus" class="form-text text-muted mt-1"></div>
-                                <div id="photoPreview" class="mt-2 d-none">
+                                <label class="form-label fw-semibold">Foto Sebelum (Optional)</label>
+                                <input id="beforePhotoInput" type="file" class="form-control" accept=".jpg,.jpeg,.png" />
+                                <div id="beforePhotoStatus" class="form-text text-muted mt-1"></div>
+                                <div id="beforePhotoPreview" class="mt-2 d-none">
                                     <div class="position-relative d-inline-block">
-                                        <img id="photoPreviewImg" src="" alt="Preview"
+                                        <img id="beforePhotoPreviewImg" src="" alt="Preview"
                                              class="rounded border" style="max-height:160px; max-width:100%;" />
-                                        <button type="button" id="photoRemoveBtn"
+                                        <button type="button" id="beforePhotoRemoveBtn"
                                                 class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1"
                                                 title="Remove photo">
                                             ✕
@@ -69,20 +65,25 @@
                                 </div>
                             </div>
                             <div class="col-12">
-                                <label class="form-label fw-semibold">Foto Sesudah</label>
-                                @* <input id="photoInput" type="file" class="form-control" accept=".jpg,.jpeg,.png" />
-                                <div id="photoStatus" class="form-text text-muted mt-1"></div>
-                                <div id="photoPreview" class="mt-2 d-none">
+                                <label class="form-label fw-semibold">Kondisi Sesudah<span class="text-danger">*</span></label>
+                                <textarea name="description2" class="form-control" rows="6" placeholder="Write the report details"></textarea>
+                                <span class="text-danger"></span>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Foto Sesudah (Optional)</label>
+                                <input id="afterPhotoInput" type="file" class="form-control" accept=".jpg,.jpeg,.png" />
+                                <div id="afterPhotoStatus" class="form-text text-muted mt-1"></div>
+                                <div id="afterPhotoPreview" class="mt-2 d-none">
                                     <div class="position-relative d-inline-block">
-                                        <img id="photoPreviewImg" src="" alt="Preview"
+                                        <img id="afterPhotoPreviewImg" src="" alt="Preview"
                                              class="rounded border" style="max-height:160px; max-width:100%;" />
-                                        <button type="button" id="photoRemoveBtn"
+                                        <button type="button" id="afterPhotoRemoveBtn"
                                                 class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1"
                                                 title="Remove photo">
                                             ✕
                                         </button>
                                     </div>
-                                </div> *@
+                                </div>
                             </div>
                             <div class="col-12 d-grid">
                                 <button type="submit" id="submitBtn" class="btn btn-primary">Submit</button>
@@ -100,75 +101,91 @@
     <script>
         (() => {
             // ── state ────────────────────────────────────────────────────────
-            let photoTempKey = null;   // set after successful temp upload
+            let beforeTempKey = null;
+            let afterTempKey  = null;
 
-            const photoInput     = document.getElementById("photoInput");
-            const photoStatus    = document.getElementById("photoStatus");
-            const photoPreview   = document.getElementById("photoPreview");
-            const photoPreviewImg = document.getElementById("photoPreviewImg");
-            const photoRemoveBtn = document.getElementById("photoRemoveBtn");
-            const submitBtn      = document.getElementById("submitBtn");
+            const submitBtn = document.getElementById("submitBtn");
 
-            // ── helpers ──────────────────────────────────────────────────────
-            function setPhotoStatus(msg, type = "muted") {
-                photoStatus.textContent = msg;
-                photoStatus.className = `form-text text-${type} mt-1`;
-            }
+            // ── generic upload/remove wiring ─────────────────────────────────
+            function wirePhotoSlot({ inputId, statusId, previewId, previewImgId, removeBtnId, getTempKey, setTempKey }) {
+                const input      = document.getElementById(inputId);
+                const status     = document.getElementById(statusId);
+                const preview    = document.getElementById(previewId);
+                const previewImg = document.getElementById(previewImgId);
+                const removeBtn  = document.getElementById(removeBtnId);
 
-            function clearPhoto() {
-                photoTempKey = null;
-                photoInput.value = "";
-                photoPreview.classList.add("d-none");
-                photoPreviewImg.src = "";
-                setPhotoStatus("");
-            }
-
-            // ── upload on file select ────────────────────────────────────────
-            photoInput.addEventListener("change", async function () {
-                const file = this.files[0];
-                if (!file) return;
-
-                // If user swaps file while a previous temp exists, remove the old one first
-                if (photoTempKey) {
-                    await deleteTempKey(photoTempKey);
-                    photoTempKey = null;
+                function setStatus(msg, type = "muted") {
+                    status.textContent = msg;
+                    status.className = `form-text text-${type} mt-1`;
                 }
 
-                setPhotoStatus("Uploading…", "muted");
-                photoInput.disabled = true;
+                function clearSlot() {
+                    setTempKey(null);
+                    input.value = "";
+                    preview.classList.add("d-none");
+                    previewImg.src = "";
+                    setStatus("");
+                }
 
-                try {
-                    const fd = new FormData();
-                    fd.append("file", file);
+                input.addEventListener("change", async function () {
+                    const file = this.files[0];
+                    if (!file) return;
 
-                    const res  = await fetch("/api/upload/temp", { method: "POST", body: fd });
-                    const data = await res.json();
-
-                    if (!res.ok) {
-                        setPhotoStatus(data.error || "Upload failed.", "danger");
-                        photoInput.disabled = false;
-                        photoInput.value = "";
-                        return;
+                    if (getTempKey()) {
+                        await deleteTempKey(getTempKey());
+                        setTempKey(null);
                     }
 
-                    photoTempKey = data.tempKey;
-                    photoPreviewImg.src = data.previewUrl;
-                    photoPreview.classList.remove("d-none");
-                    setPhotoStatus("Photo ready.", "success");
-                } catch {
-                    setPhotoStatus("Upload error. Please try again.", "danger");
-                } finally {
-                    photoInput.disabled = false;
-                }
+                    setStatus("Uploading…", "muted");
+                    input.disabled = true;
+
+                    try {
+                        const fd = new FormData();
+                        fd.append("file", file);
+
+                        const res  = await fetch("/api/upload/temp", { method: "POST", body: fd });
+                        const data = await res.json();
+
+                        if (!res.ok) {
+                            setStatus(data.error || "Upload failed.", "danger");
+                            input.value = "";
+                            return;
+                        }
+
+                        setTempKey(data.tempKey);
+                        previewImg.src = data.previewUrl;
+                        preview.classList.remove("d-none");
+                        setStatus("Photo ready.", "success");
+                    } catch {
+                        setStatus("Upload error. Please try again.", "danger");
+                    } finally {
+                        input.disabled = false;
+                    }
+                });
+
+                removeBtn.addEventListener("click", async function () {
+                    if (!getTempKey()) { clearSlot(); return; }
+                    this.disabled = true;
+                    await deleteTempKey(getTempKey());
+                    clearSlot();
+                    this.disabled = false;
+                });
+            }
+
+            wirePhotoSlot({
+                inputId: "beforePhotoInput", statusId: "beforePhotoStatus",
+                previewId: "beforePhotoPreview", previewImgId: "beforePhotoPreviewImg",
+                removeBtnId: "beforePhotoRemoveBtn",
+                getTempKey: () => beforeTempKey,
+                setTempKey: (k) => { beforeTempKey = k; }
             });
 
-            // ── remove photo ─────────────────────────────────────────────────
-            photoRemoveBtn.addEventListener("click", async function () {
-                if (!photoTempKey) { clearPhoto(); return; }
-                this.disabled = true;
-                await deleteTempKey(photoTempKey);
-                clearPhoto();
-                this.disabled = false;
+            wirePhotoSlot({
+                inputId: "afterPhotoInput", statusId: "afterPhotoStatus",
+                previewId: "afterPhotoPreview", previewImgId: "afterPhotoPreviewImg",
+                removeBtnId: "afterPhotoRemoveBtn",
+                getTempKey: () => afterTempKey,
+                setTempKey: (k) => { afterTempKey = k; }
             });
 
             // ── delete helper ────────────────────────────────────────────────
@@ -179,9 +196,7 @@
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ tempKey: key })
                     });
-                } catch {
-                    // Best-effort; cleanup service will handle it if this fails
-                }
+                } catch { /* best-effort */ }
             }
 
             // ── form submit ──────────────────────────────────────────────────
@@ -194,11 +209,10 @@
                 const fd = new FormData(this);
                 fd.append("ReportType", "Kaizen");
 
-                // Attach the temp key (may be null if user skipped the photo)
-                if (photoTempKey) fd.append("photoTempKey", photoTempKey);
+                if (beforeTempKey) fd.append("BeforePhotoTempKey", beforeTempKey);
+                if (afterTempKey)  fd.append("AfterPhotoTempKey",  afterTempKey);
 
                 try {
-                    console.log("Submitting Report");
                     const res  = await fetch("/api/report/submit", { method: "POST", body: fd });
                     const data = await res.json();
 

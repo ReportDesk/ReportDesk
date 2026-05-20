@@ -31,27 +31,20 @@
 
                         <div class="row g-3">
 
-                            <div class="col-12">
-                                <label class="form-label fw-semibold">Title</label>
-                                <input id="inputTitle" name="title" class="form-control"
-                                       placeholder="Enter report title" />
-                                <span id="errTitle" class="text-danger small"></span>
-                            </div>
-
                             <div class="col-12 col-md-6">
-                                <label class="form-label fw-semibold">Time</label>
+                                <Waktu class="form-label fw-semibold">Waktu</label>
                                 <input type="text" class="form-control"
                                        value="@Model.CurrentTimeDisplay" readonly />
                             </div>
                             <div class="col-12 col-md-6">
-                                <label class="form-label fw-semibold">Name</label>
+                                <label class="form-label fw-semibold">Pelapor<span class="text-danger">*</span></label>
                                 <input id="inputName" name="name" class="form-control"
                                        placeholder="Enter your name" />
                                 <span id="errName" class="text-danger small"></span>
                             </div>
 
                             <div class="col-12 col-md-6">
-                                <label class="form-label fw-semibold">Machine</label>
+                                <label class="form-label fw-semibold">Nama Mesin<span class="text-danger">*</span></label>
 
                                 @if (!string.IsNullOrWhiteSpace(Model.MachineLoadError))
                                 {
@@ -71,15 +64,8 @@
                                 <span id="errMachine" class="text-danger small"></span>
                             </div>
 
-                            <div class="col-12 col-md-6">
-                                <label class="form-label fw-semibold">Area</label>
-                                <input id="inputArea" name="area" class="form-control"
-                                       placeholder="Enter area" />
-                                <span id="errArea" class="text-danger small"></span>
-                            </div>
-
                             <div class="col-12">
-                                <label class="form-label fw-semibold">Description</label>
+                                <label class="form-label fw-semibold">Kondisi Mesin<span class="text-danger">*</span></label>
                                 <textarea id="inputDescription" name="description"
                                           class="form-control" rows="6"
                                           placeholder="Describe the machine issue in detail"></textarea>
@@ -87,7 +73,7 @@
                             </div>
 
                             <div class="col-12">
-                                <label class="form-label fw-semibold">Upload Photo</label>
+                                <label class="form-label fw-semibold">Upload Foto (Optional)</label>
                                 <input id="photoInput" type="file" class="form-control"
                                        accept=".jpg,.jpeg,.png" />
                                 <div id="photoStatus" class="form-text text-muted mt-1"></div>
@@ -156,7 +142,7 @@
             }
 
             function clearErrors() {
-                ["errTitle", "errName", "errMachine", "errArea", "errDescription"]
+                ["errName", "errMachine", "errDescription"]
                     .forEach(id => setFieldError(id, ""));
                 formError.textContent = "";
                 formError.classList.add("d-none");
@@ -172,16 +158,12 @@
                 clearErrors();
                 let valid = true;
 
-                const title       = document.getElementById("inputTitle").value.trim();
                 const name        = document.getElementById("inputName").value.trim();
                 const machineId   = document.getElementById("inputMachine").value;
-                const area        = document.getElementById("inputArea").value.trim();
                 const description = document.getElementById("inputDescription").value.trim();
 
-                if (!title)       { setFieldError("errTitle",       "Title is required.");       valid = false; }
                 if (!name)        { setFieldError("errName",        "Name is required.");        valid = false; }
                 if (!machineId)   { setFieldError("errMachine",     "Please select a machine."); valid = false; }
-                if (!area)        { setFieldError("errArea",        "Area is required.");        valid = false; }
                 if (!description) { setFieldError("errDescription", "Description is required."); valid = false; }
 
                 return valid;

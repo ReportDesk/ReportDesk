@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ReportSystem.Models
@@ -10,23 +10,35 @@ namespace ReportSystem.Models
         [Column("USER_ID")]
         public int UserId { get; set; }
 
+        [Column("FULLNAME")]
+        public string Fullname { get; set; } = string.Empty;
+
         [Column("USERNAME")]
-        public string Username { get; set; }
+        public string Username { get; set; } = string.Empty;
 
         [Column("EMAIL")]
-        public string Email { get; set; }
+        public string Email { get; set; } = string.Empty;
 
         [Column("PASSWORD")]
-        public string Password { get; set; }
+        public string Password { get; set; } = string.Empty;
 
         [Column("ROLE")]
-        public string Role { get; set; }
+        public string Role { get; set; } = string.Empty;
 
         [Column("CREATED_DATE")]
         public DateTime CreatedDate { get; set; }
 
+        [Column("UPDATED_DATE")]
+        public DateTime? UpdatedDate { get; set; }
+        
         [Column("IS_ACTIVE")]
         public byte IsActive { get; set; }
+
+        [Column("PASSWORD_RESET_TOKEN")]
+        public string? PasswordResetToken { get; set; }
+
+        [Column("PASSWORD_RESET_EXPIRY")]
+        public DateTime? PasswordResetExpiry { get; set; }
 
         [NotMapped]
         public bool IsActiveFlag

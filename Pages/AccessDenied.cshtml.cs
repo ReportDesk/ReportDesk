@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace ReportSystem.Pages.Admin
 {
-    public class IndexModel : PageModel
+    public class AccessDeniedModel : PageModel
     {
         public void OnGet()
         {

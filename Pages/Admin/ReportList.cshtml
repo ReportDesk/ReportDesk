@@ -1,0 +1,129 @@
+@page
+@model ReportSystem.Pages.Admin.ReportListModel
+@{
+    ViewData["Title"] = "Admin Report";
+}
+
+<div class="container-body">
+    <div class="row mb-3">
+        <div class="col-12">
+            <h4 class="fw-bold mb-1">@* @Model.PageTitle *@</h4>
+            <small class="text-muted">Filter and review submitted reports.</small>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Model.LoadError))
+    {
+        <div class="alert alert-warning" role="alert">
+            @Model.LoadError
+        </div>
+    }
+
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body p-3 p-lg-4">
+            <form method="get">
+                <!-- Keep ReportType across filter submissions -->
+                <input type="hidden" asp-for="ReportType" />
+
+                <div class="row g-3 align-items-end">
+                    <div class="col-12 col-md-6 col-lg-3">
+                        <label for="fromDate" class="form-label fw-semibold">From Date</label>
+                        <input id="fromDate" asp-for="FromDate" type="date" class="form-control" />
+                    </div>
+
+                    <div class="col-12 col-md-6 col-lg-3">
+                        <label for="toDate" class="form-label fw-semibold">To Date</label>
+                        <input id="toDate" asp-for="ToDate" type="date" class="form-control" />
+                    </div>
+
+                    @if (Model.IsMachineType)
+                    {
+                        <div class="col-12 col-md-6 col-lg-3">
+                            <label for="machineId" class="form-label fw-semibold">Machine</label>
+                            <select id="machineId" asp-for="MachineId" asp-items="Model.MachineOptions" class="form-select">
+                                <option value="">All Machines</option>
+                            </select>
+                        </div>
+                    }
+
+                    <div class="col-12 col-lg-4">
+                        <label class="form-label fw-semibold d-block">Status</label>
+                        <div class="d-flex flex-wrap gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="statusOpen" asp-for="StatusOpen" />
+                                <label class="form-check-label" for="statusOpen">Open</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="statusOnProgress" asp-for="StatusOnProgress" />
+                                <label class="form-check-label" for="statusOnProgress">On Progress</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="statusClose" asp-for="StatusClose" />
+                                <label class="form-check-label" for="statusClose">Close</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="statusDone" asp-for="StatusDone" />
+                                <label class="form-check-label" for="statusDone">Done</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-lg-2">
+                        <div class="d-grid gap-2 d-lg-flex justify-content-lg-end">
+                            <button type="submit" class="btn btn-primary">Apply Filter</button>
+                            <a asp-page="/Admin/ReportList" asp-route-reportType="@Model.ReportType" class="btn btn-outline-secondary">Clear</a>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-3 p-lg-4">
+            <h6 class="fw-bold mb-3">Report List</h6>
+            <div class="table-responsive">
+                <table class="table initDataTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">Title</th>
+                            <th scope="col">Type</th>
+                            <th scope="col">Reported By</th>
+                            <th scope="col">Area</th>
+                            <th scope="col">Submission Date</th>
+                            <th scope="col">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.ReportRows.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-4">No reports to display.</td>
+                            </tr>
+                        }
+                        else
+                        {
+                            foreach (var report in Model.ReportRows)
+                            {
+                                <tr>
+                                    <td>
+                                        <a asp-page="/Admin/ReportDetail"
+                                           asp-route-reportId="@report.ReportId"
+                                           class="fw-semibold text-decoration-none">
+                                            @report.Title
+                                        </a>
+                                    </td>
+                                    <td>@report.ReportType</td>
+                                    <td>@report.ReportedBy</td>
+                                    <td>@report.Area</td>
+                                    <td>@report.SubmissionDateText</td>
+                                    <td>@report.Status</td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

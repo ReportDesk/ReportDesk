@@ -13,18 +13,34 @@ namespace ReportSystem.Pages.Admin
         public ReportListModel(AppDbContext db) => _db = db;
 
         [BindProperty(SupportsGet = true)] public string ReportType { get; set; } = string.Empty;
-        [BindProperty(SupportsGet = true)] public DateTime? FromDate { get; set; }
-        [BindProperty(SupportsGet = true)] public DateTime? ToDate { get; set; }
-        [BindProperty(SupportsGet = true)] public bool StatusOpen { get; set; }
-        [BindProperty(SupportsGet = true)] public bool StatusOnProgress { get; set; }
-        [BindProperty(SupportsGet = true)] public bool StatusClose { get; set; }
-        [BindProperty(SupportsGet = true)] public bool StatusDone { get; set; }
+        [BindProperty(SupportsGet = true)] public string FromDate { get; set; } = string.Empty;
+        [BindProperty(SupportsGet = true)] public string ToDate { get; set; } = string.Empty;
+        [BindProperty(SupportsGet = true)] public List<string> Status { get; set; } = ["open", "on progress", "close"];
 
         // Machine-only filter
         [BindProperty(SupportsGet = true)] public int? MachineId { get; set; }
         public List<SelectListItem> MachineOptions { get; set; } = [];
 
         public bool IsMachineType => ReportType == "Machine";
+        public bool IsSuggestionType => ReportType == "Suggestion";
+        public bool IsNearMissOrKaizen => ReportType == "Nearmiss" || ReportType == "Kaizen";
+
+
+        public string ContextColumnLabel => ReportType switch
+        {
+            "Machine" => "Machine",
+            "Suggestion" => "About",
+            _ => "Area"   // Nearmiss, Kaizen, unknown
+        };
+
+        public string PageTitle => ReportType switch
+        {
+            "Machine" => "Machine Report List",
+            "NearMiss" => "NearMiss Report List",
+            "Suggestion" => "Suggestion",
+            "Kaizen" => "Kaizen Report List",
+            _ => "Report List"
+        };
 
         public List<ReportRow> ReportRows { get; set; } = [];
         public string LoadError { get; set; } = string.Empty;
@@ -43,25 +59,22 @@ namespace ReportSystem.Pages.Admin
                     }).ToList();
                 }
 
-                var query = _db.MasterReports.AsQueryable();
+                // Include Machine navigation so MachineName is available without a second query
+                var query = _db.MasterReports
+                    .Include(r => r.Machine)
+                    .AsQueryable();
 
                 if (!string.IsNullOrWhiteSpace(ReportType))
                     query = query.Where(r => r.ReportType == ReportType);
 
-                if (FromDate.HasValue)
-                    query = query.Where(r => r.SubmissionDate >= FromDate.Value);
+                if (DateTime.TryParse(FromDate, out var fromDate))
+                    query = query.Where(r => r.SubmissionDate >= fromDate);
 
-                if (ToDate.HasValue)
-                    query = query.Where(r => r.SubmissionDate <= ToDate.Value.AddDays(1).AddTicks(-1));
+                if (DateTime.TryParse(ToDate, out var toDate))
+                    query = query.Where(r => r.SubmissionDate <= toDate.AddDays(1).AddTicks(-1));
 
-                var selectedStatuses = new List<string>();
-                if (StatusOpen) selectedStatuses.Add("Open");
-                if (StatusOnProgress) selectedStatuses.Add("On Progress");
-                if (StatusClose) selectedStatuses.Add("Close");
-                if (StatusDone) selectedStatuses.Add("Done");
-
-                if (selectedStatuses.Count > 0)
-                    query = query.Where(r => selectedStatuses.Contains(r.Status));
+                if (Status.Count > 0)
+                    query = query.Where(r => Status.Contains(r.Status));
 
                 if (IsMachineType && MachineId.HasValue)
                     query = query.Where(r => r.MachineId == MachineId.Value);
@@ -73,17 +86,26 @@ namespace ReportSystem.Pages.Admin
                 ReportRows = reports.Select(r => new ReportRow
                 {
                     ReportId = r.ReportId,
-                    Title = r.ReportTitle,
                     ReportType = r.ReportType,
                     ReportedBy = r.ReportedBy,
                     Area = r.Area,
+                    MachineName = r.Machine?.MachineName ?? string.Empty,
                     SubmissionDateText = r.SubmissionDate.ToString("dd MMM yyyy"),
-                    Status = r.Status
+                    Status = r.Status,
+                    Title = r.Description ?? string.Empty,
+                    ShortDescription = r.Description ?? string.Empty,
+                    // ContextValue is the value shown in the dynamic "Area / Mesin / Tentang" column
+                    ContextValue = r.ReportType switch
+                    {
+                        "Machine" => r.Machine?.MachineName ?? string.Empty,
+                        "Suggestion" => r.Description ?? string.Empty, // adjust to your "About" field if different
+                        _ => r.Area ?? string.Empty          // Nearmiss, Kaizen
+                    }
                 }).ToList();
             }
             catch (Exception ex)
             {
-                LoadError = $"Failed to load reports: {ex.Message}";
+                LoadError = $"Error loading report: {ex.Message}";
             }
         }
 
@@ -94,8 +116,12 @@ namespace ReportSystem.Pages.Admin
             public string ReportType { get; set; } = string.Empty;
             public string ReportedBy { get; set; } = string.Empty;
             public string Area { get; set; } = string.Empty;
+            public string MachineName { get; set; } = string.Empty;
             public string SubmissionDateText { get; set; } = string.Empty;
             public string Status { get; set; } = string.Empty;
+            public string ShortDescription { get; set; } = string.Empty;
+            /// <summary>Resolved context value: Area, MachineName, or About depending on report type.</summary>
+            public string ContextValue { get; set; } = string.Empty;
         }
     }
 }

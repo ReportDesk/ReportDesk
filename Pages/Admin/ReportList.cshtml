@@ -1,13 +1,70 @@
-@page
+﻿@page
 @model ReportSystem.Pages.Admin.ReportListModel
 @{
-    ViewData["Title"] = "Admin Report";
+    ViewData["Title"] = Model.PageTitle;
+
+    int colCount = 6;
 }
 
+<style>
+    @@media (max-width: 768px) {
+
+        .mobile-filter-stack {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 0.75rem !important;
+        }
+
+            .mobile-filter-stack > div {
+                width: 100%;
+            }
+
+            .mobile-filter-stack .form-control,
+            .mobile-filter-stack .form-select,
+            .mobile-filter-stack .btn {
+                width: 100% !important;
+                min-width: unset !important;
+            }
+
+        .mobile-status-group {
+            gap: 0.75rem !important;
+        }
+
+        .mobile-action-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+            .mobile-action-group .btn {
+                width: 100%;
+            }
+
+        .table-responsive {
+            font-size: 0.875rem;
+        }
+
+        .table td,
+        .table th {
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+
+        .mobile-truncate {
+            max-width: 140px !important;
+        }
+
+        .card-body {
+            padding: 1rem !important;
+        }
+    }
+</style>
+
 <div class="container-body">
+
     <div class="row mb-3">
         <div class="col-12">
-            <h4 class="fw-bold mb-1">@* @Model.PageTitle *@</h4>
+            <h4 class="fw-bold mb-1">@Model.PageTitle</h4>
             <small class="text-muted">Filter and review submitted reports.</small>
         </div>
     </div>
@@ -19,61 +76,99 @@
         </div>
     }
 
-    <div class="card border-0 shadow-sm mb-3">
-        <div class="card-body p-3 p-lg-4">
+    <div>
+        <div class="py-2">
             <form method="get">
-                <!-- Keep ReportType across filter submissions -->
                 <input type="hidden" asp-for="ReportType" />
 
-                <div class="row g-3 align-items-end">
-                    <div class="col-12 col-md-6 col-lg-3">
-                        <label for="fromDate" class="form-label fw-semibold">From Date</label>
-                        <input id="fromDate" asp-for="FromDate" type="date" class="form-control" />
+                <div class="d-flex flex-wrap justify-content-start align-items-end gap-3 mobile-filter-stack">
+
+                    <div>
+                        <label class="form-label fw-semibold small mb-1" for="fromDate">
+                            From Date
+                        </label>
+                        <input id="fromDate"
+                               asp-for="FromDate"
+                               type="date"
+                               class="form-control form-control-sm"
+                               style="min-width:140px" />
                     </div>
 
-                    <div class="col-12 col-md-6 col-lg-3">
-                        <label for="toDate" class="form-label fw-semibold">To Date</label>
-                        <input id="toDate" asp-for="ToDate" type="date" class="form-control" />
+                    <div>
+                        <label class="form-label fw-semibold small mb-1" for="toDate">
+                            To Date
+                        </label>
+                        <input id="toDate"
+                               asp-for="ToDate"
+                               type="date"
+                               class="form-control form-control-sm"
+                               style="min-width:140px" />
                     </div>
 
                     @if (Model.IsMachineType)
                     {
-                        <div class="col-12 col-md-6 col-lg-3">
-                            <label for="machineId" class="form-label fw-semibold">Machine</label>
-                            <select id="machineId" asp-for="MachineId" asp-items="Model.MachineOptions" class="form-select">
+                        <div>
+                            <label class="form-label fw-semibold small mb-1" for="machineId">
+                                Machine
+                            </label>
+
+                            <select id="machineId"
+                                    asp-for="MachineId"
+                                    asp-items="Model.MachineOptions"
+                                    class="form-select form-select-sm"
+                                    style="min-width:180px">
                                 <option value="">All Machines</option>
                             </select>
                         </div>
                     }
 
-                    <div class="col-12 col-lg-4">
-                        <label class="form-label fw-semibold d-block">Status</label>
-                        <div class="d-flex flex-wrap gap-3">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="statusOpen" asp-for="StatusOpen" />
-                                <label class="form-check-label" for="statusOpen">Open</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="statusOnProgress" asp-for="StatusOnProgress" />
-                                <label class="form-check-label" for="statusOnProgress">On Progress</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="statusClose" asp-for="StatusClose" />
-                                <label class="form-check-label" for="statusClose">Close</label>
-                            </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="statusDone" asp-for="StatusDone" />
-                                <label class="form-check-label" for="statusDone">Done</label>
-                            </div>
+                    <div>
+                        <label class="form-label fw-semibold small mb-1 d-block">
+                            Status
+                        </label>
+
+                        <div class="d-flex flex-wrap align-items-center mobile-status-group gap-3">
+                            @foreach (var s in new[] { "open", "on progress", "close" })
+                            {
+                                var labelId = "status_" + s.Replace(" ", "");
+
+                                var labelText = s switch
+                                {
+                                    "open" => "Terbuka",
+                                    "on progress" => "Sedang Diproses",
+                                    "close" => "Selesai",
+                                    _ => s
+                                };
+
+                                <div class="form-check mb-0">
+                                    <input class="form-check-input"
+                                           type="checkbox"
+                                           name="Status"
+                                           value="@s"
+                                           id="@labelId"
+                                           @(Model.Status.Contains(s) ? "checked" : "") />
+
+                                    <label class="form-check-label small" for="@labelId">
+                                        @labelText
+                                    </label>
+                                </div>
+                            }
                         </div>
                     </div>
 
-                    <div class="col-12 col-lg-2">
-                        <div class="d-grid gap-2 d-lg-flex justify-content-lg-end">
-                            <button type="submit" class="btn btn-primary">Apply Filter</button>
-                            <a asp-page="/Admin/ReportList" asp-route-reportType="@Model.ReportType" class="btn btn-outline-secondary">Clear</a>
-                        </div>
+                    <div class="d-flex gap-2 align-items-end mobile-action-group">
+                        <button type="submit"
+                                class="btn btn-primary btn-sm px-3">
+                            Apply Filter
+                        </button>
+
+                        <a asp-page="/Admin/ReportList"
+                           asp-route-reportType="@Model.ReportType"
+                           class="btn btn-outline-secondary btn-sm px-3">
+                            Reset
+                        </a>
                     </div>
+
                 </div>
             </form>
         </div>
@@ -81,49 +176,125 @@
 
     <div class="card border-0 shadow-sm">
         <div class="card-body p-3 p-lg-4">
-            <h6 class="fw-bold mb-3">Report List</h6>
+
             <div class="table-responsive">
-                <table class="table initDataTable">
+                <table class="table initDataTable align-middle">
                     <thead class="table-light">
                         <tr>
-                            <th scope="col">Title</th>
-                            <th scope="col">Type</th>
-                            <th scope="col">Reported By</th>
-                            <th scope="col">Area</th>
-                            <th scope="col">Submission Date</th>
-                            <th scope="col">Status</th>
+                            <th scope="col" style="width:120px">Status</th>
+                            <th scope="col" style="width:115px">Time</th>
+                            <th scope="col">@Model.ContextColumnLabel</th>
+                            <th scope="col">Reporter</th>
+                            <th scope="col">Short Description</th>
+                            <th scope="col"
+                                style="width:80px"
+                                class="text-center">
+                                Action
+                            </th>
                         </tr>
                     </thead>
+
                     <tbody>
                         @if (Model.ReportRows.Count == 0)
                         {
                             <tr>
-                                <td colspan="6" class="text-center text-muted py-4">No reports to display.</td>
+                                <td colspan="@colCount"
+                                    class="text-center text-muted py-4">
+                                    <i class="bi bi-inbox me-2"></i>
+                                    No Report Found.
+                                </td>
                             </tr>
                         }
                         else
                         {
                             foreach (var report in Model.ReportRows)
                             {
+                                var (pillClass, pillLabel) = report.Status?.ToLower() switch
+                                {
+                                    "open"
+                                    => ("bg-danger-subtle text-danger border border-danger-subtle", "Open"),
+
+                                    "on progress" or "onprogress" or "on-progress"
+                                    => ("bg-warning-subtle text-warning border border-warning-subtle", "On Progress"),
+
+                                    "close" or "closed"
+                                    => ("bg-success-subtle text-success border border-success-subtle", "Close"),
+
+                                    _ => ("bg-secondary-subtle text-secondary border border-secondary-subtle",
+                                    report.Status ?? "—")
+                                };
+
                                 <tr>
+
                                     <td>
+                                        <span class="badge rounded-pill fw-semibold px-3 py-2 @pillClass">
+                                            @pillLabel
+                                        </span>
+                                    </td>
+
+                                    <td class="text-nowrap">
+                                        @report.SubmissionDateText
+                                    </td>
+
+                                    <td>
+                                        <span class="d-inline-block text-truncate mobile-truncate"
+                                              style="max-width:200px"
+                                              title="@report.ContextValue">
+                                            @report.ContextValue
+                                        </span>
+                                    </td>
+
+                                    <td>
+                                        <span class="d-inline-block text-truncate mobile-truncate"
+                                              style="max-width:160px"
+                                              title="@report.ReportedBy">
+                                            @report.ReportedBy
+                                        </span>
+                                    </td>
+
+                                    <td>
+                                        <span class="d-inline-block text-truncate text-muted small mobile-truncate"
+                                              style="max-width:260px"
+                                              title="@report.ShortDescription">
+                                            @report.ShortDescription
+                                        </span>
+                                    </td>
+
+                                    <td class="text-center">
                                         <a asp-page="/Admin/ReportDetail"
                                            asp-route-reportId="@report.ReportId"
-                                           class="fw-semibold text-decoration-none">
-                                            @report.Title
+                                           class="btn btn-sm btn-outline-primary"
+                                           title="See detail">
+                                            <i class="bi bi-eye"></i>
                                         </a>
                                     </td>
-                                    <td>@report.ReportType</td>
-                                    <td>@report.ReportedBy</td>
-                                    <td>@report.Area</td>
-                                    <td>@report.SubmissionDateText</td>
-                                    <td>@report.Status</td>
+
                                 </tr>
                             }
                         }
                     </tbody>
                 </table>
             </div>
+
         </div>
     </div>
+
 </div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            $('table.initDataTable').DataTable({
+                pageLength: 10,
+                lengthMenu: [5, 10, 25, 50],
+                columnDefs: [
+                    { orderable: false, targets: 5 }
+                ],
+                responsive: true,
+                autoWidth: false
+            });
+
+        });
+    </script>
+}

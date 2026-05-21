@@ -28,32 +28,28 @@
                     <form id="reportForm" method="post">
                         <div  class="text-danger mb-2"></div>
                         <div class="row g-3">
-                            <div class="col-12">
-                                <label class="form-label fw-semibold">Title</label>
-                                <input name="title" class="form-control" placeholder="Enter report title" />
-                                <span class="text-danger"></span>
-                            </div>
+
                             <div class="col-12 col-md-6">
-                                <label class="form-label fw-semibold">Time</label>
+                                <label class="form-label fw-semibold">Waktu</label>
                                 <input type="text" class="form-control" value="@Model.CurrentTimeDisplay" readonly />
                             </div>
                             <div class="col-12 col-md-6">
-                                <label class="form-label fw-semibold">Name</label>
+                                <label class="form-label fw-semibold">Pelapor<span class="text-danger">*</span></label>
                                 <input name="name" class="form-control" placeholder="Enter your name" />
                                 <span class="text-danger"></span>
                             </div>
                             <div class="col-12">
-                                <label class="form-label fw-semibold">Area</label>
-                                <input name="area" class="form-control" placeholder="Enter area" />
+                                <label class="form-label fw-semibold">Perihal<span class="text-danger">*</span></label>
+                                <textarea name="area" class="form-control" rows="3" placeholder="Enter about"></textarea>
                                 <span class="text-danger"></span>
                             </div>
                             <div class="col-12">
-                                <label class="form-label fw-semibold">Description</label>
+                                <label class="form-label fw-semibold">Saran<span class="text-danger">*</span></label>
                                 <textarea name="description" class="form-control" rows="6" placeholder="Write the report details"></textarea>
                                 <span class="text-danger"></span>
                             </div>
                             <div class="col-12">
-                                <label class="form-label fw-semibold">Upload Photo</label>
+                                <label class="form-label fw-semibold">Upload Foro (Optional)</label>
                                 <input id="photoInput" type="file" class="form-control" accept=".jpg,.jpeg,.png" />
                                 <div id="photoStatus" class="form-text text-muted mt-1"></div>
                                 <div id="photoPreview" class="mt-2 d-none">

@@ -1,14 +1,11 @@
-﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using ReportSystem.Services;
-using SixLabors.ImageSharp;
 
-namespace YourProject.Controllers;
+namespace ReportSystem.Controllers.API;
 
 [ApiController]
 [Route("api/upload")]
-[Authorize]
 public class UploadController : ControllerBase
 {
     private readonly IFileValidationService _validator;
@@ -28,41 +25,44 @@ public class UploadController : ControllerBase
         _logger = logger;
     }
 
-    // ── POST /api/upload/temp ─────────────────────────────────────────────────
-    /// <summary>
-    /// Called immediately when the user selects a photo.
-    /// Validates → processes (resize + WebP + strip EXIF) → uploads to R2 temp/.
-    /// Returns a tempKey the client holds until form submission.
-    /// </summary>
     [HttpPost("temp")]
-    [EnableRateLimiting("upload")]          // Defined in Program.cs
-    [RequestSizeLimit(10 * 1024 * 1024)]    // 10 MB hard limit at infrastructure level
+    [EnableRateLimiting("upload")]
+    [RequestSizeLimit(10 * 1024 * 1024)]
     public async Task<IActionResult> UploadTemp(IFormFile file, CancellationToken ct)
     {
-        // 1. Validate
-        var validation = await _validator.ValidateAsync(file, ct);
+        if (file is null)
+            return BadRequest(new { error = "No file was uploaded." });
+
+        var processingToken = CancellationToken.None;
+
+        var validation = await _validator.ValidateAsync(file, processingToken);
         if (!validation.IsValid)
             return BadRequest(new { error = validation.Error });
 
-        var userId = User.FindFirst("sub")?.Value ?? "anonymous";
+        var ownerToken = Guid.NewGuid().ToString("N");
 
-        // 2. Process (resize + WebP + strip EXIF)
         MemoryStream processedStream;
-        int width, height;
+        int width;
+        int height;
+        long fileSizeBytes;
 
         try
         {
             using var inputStream = file.OpenReadStream();
-            processedStream = await _processor.ProcessAsync(inputStream, ct);
-
-            processedStream.Position = 0;
-            var info = await Image.IdentifyAsync(processedStream, ct);
-            (width, height) = (info.Width, info.Height);
+            var processedImage = await _processor.ProcessAsync(inputStream, processingToken);
+            processedStream = processedImage.Stream;
+            width = processedImage.Width;
+            height = processedImage.Height;
+            fileSizeBytes = processedStream.Length;
             processedStream.Position = 0;
         }
         catch (InvalidOperationException ex)
         {
             return UnprocessableEntity(new { error = ex.Message });
+        }
+        catch (OperationCanceledException)
+        {
+            return BadRequest(new { error = "Upload was canceled before processing completed." });
         }
         catch (Exception ex)
         {
@@ -70,43 +70,42 @@ public class UploadController : ControllerBase
             return StatusCode(500, new { error = "Image processing failed." });
         }
 
-        // 3. Upload to R2 temp/
         string tempKey;
         try
         {
             await using (processedStream)
             {
-                tempKey = await _r2.UploadTempAsync(processedStream, file.FileName, userId, ct);
+                tempKey = await _r2.UploadTempAsync(processedStream, file.FileName, ownerToken, ct);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "R2 upload failed");
+            _logger.LogError(ex, "R2 upload failed for owner token {OwnerToken}", ownerToken);
             return StatusCode(500, new { error = "Storage upload failed." });
         }
 
         return Ok(new TempUploadResponse(
             TempKey: tempKey,
+            UploadOwnerToken: ownerToken,
             PreviewUrl: _r2.GetPublicUrl(tempKey),
-            FileSizeBytes: processedStream.Length,
+            FileSizeBytes: fileSizeBytes,
             Width: width,
             Height: height
         ));
     }
 
-    // ── DELETE /api/upload/temp ───────────────────────────────────────────────
-    /// <summary>
-    /// Called when user clicks X on an image preview before submitting.
-    /// Immediately removes the temp file from R2.
-    /// </summary>
     [HttpDelete("temp")]
     public async Task<IActionResult> DeleteTemp([FromBody] DeleteTempRequest request, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(request.TempKey) || !request.TempKey.StartsWith("temp/"))
-            return BadRequest(new { error = "Invalid temp key." });
+        if (request is null ||
+            string.IsNullOrWhiteSpace(request.TempKey) ||
+            string.IsNullOrWhiteSpace(request.UploadOwnerToken) ||
+            !request.TempKey.StartsWith("temp/", StringComparison.Ordinal))
+        {
+            return BadRequest(new { error = "Invalid temp upload request." });
+        }
 
-        var userId = User.FindFirst("sub")?.Value ?? "anonymous";
-        if (!request.TempKey.StartsWith($"temp/{userId}/"))
+        if (!request.TempKey.StartsWith($"temp/{request.UploadOwnerToken}/", StringComparison.Ordinal))
             return Forbid();
 
         try
@@ -123,11 +122,12 @@ public class UploadController : ControllerBase
 
     public record TempUploadResponse(
         string TempKey,
+        string UploadOwnerToken,
         string PreviewUrl,
         long FileSizeBytes,
         int Width,
         int Height
     );
 
-    public record DeleteTempRequest(string TempKey);
+    public record DeleteTempRequest(string TempKey, string UploadOwnerToken);
 }

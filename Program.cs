@@ -64,6 +64,8 @@ builder.Services.AddSingleton<IAmazonS3>(_ =>
     {
         ServiceURL = $"https://{accountId}.r2.cloudflarestorage.com",
         ForcePathStyle = true,   // Required for R2
+        AuthenticationRegion = "auto",
+
         RequestChecksumCalculation = RequestChecksumCalculation.WHEN_REQUIRED,
         ResponseChecksumValidation = ResponseChecksumValidation.WHEN_REQUIRED,
     };

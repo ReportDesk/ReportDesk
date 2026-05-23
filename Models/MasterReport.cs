@@ -17,6 +17,9 @@ namespace ReportSystem.Models
         [Column("REPORTED_NAME")]
         public string ReportedBy { get; set; } = string.Empty;
 
+        [Column("ABOUT")]
+        public string? About { get; set; } = string.Empty;
+
         [Column("DESCRIPTION")]
         public string Description { get; set; } = string.Empty;
 

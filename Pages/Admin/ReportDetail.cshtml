@@ -1,118 +1,472 @@
-@page "{reportId:int}"
+﻿@page "{reportId:int}"
 @model ReportSystem.Pages.Admin.ReportDetailModel
 @{
     ViewData["Title"] = "Report Detail";
+    bool isMachine = Model.ReportType?.ToLower() == "machine";
+    bool isKaizen = Model.ReportType?.ToLower() == "kaizen";
+    bool isNearmiss = Model.ReportType?.ToLower() == "nearmiss";
+
+    string aboutLabel = isMachine ? "Machine Name"
+                      : isKaizen || isNearmiss ? "Area"
+                      : "About";
+
+    string statusBadgeClass = Model.SelectedStatus switch
+    {
+        "Open" => "bg-danger",
+        "On Progress" => "bg-warning text-dark",
+        "Close" => "bg-success",
+        _ => "bg-secondary"
+    };
 }
 
 <div class="container-body">
+
+    @* Header *@
     <div class="row mb-3">
         <div class="col-12 d-flex justify-content-between align-items-center">
-            <div>
-                <h4 class="fw-bold mb-1">Report Detail</h4>
-                <small class="text-muted">Report ID: @Model.ReportId</small>
-            </div>
-            <a asp-page="/Admin/ReportList" class="btn btn-outline-secondary btn-sm">Back to List</a>
+            <h4 class="fw-bold mb-1">Report Detail</h4>
+            <a asp-page="/Admin/ReportList" class="btn btn-outline-secondary">
+                &larr; Back to List
+            </a>
         </div>
     </div>
 
+    @* Alerts *@
     @if (!string.IsNullOrWhiteSpace(Model.SuccessMessage))
     {
-        <div class="alert alert-success" role="alert">
-            @Model.SuccessMessage
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle me-2"></i>@Model.SuccessMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-x-circle me-2"></i>@Model.ErrorMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     }
 
-    <form method="post" enctype="multipart/form-data">
-        <input type="hidden" asp-for="ReportId" />
+    <form method="post"
+          enctype="multipart/form-data"
+          id="reportForm"
+          asp-page-handler="SaveFollowUp">
+        @* ← matches OnPostSaveFollowUpAsync *@
 
-        <div class="card border-0 shadow-sm mb-3">
+        @* Hidden input *@
+        <input type="hidden" asp-for="reportId" />
+        <input type="hidden" id="draftStatusInput" name="DraftStatus" value="" />
+        <input type="hidden" name="handler" value="SaveFollowUp" />
+
+        @* ═══ TOP CARD: Report Data ═══ *@
+        <div class="card border-0 shadow mb-3">
+            <div class="card-header bg-white border-bottom py-3">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-file-earmark-text text-primary"></i>
+                    <span class="fw-semibold">Informasi Laporan</span>
+                    <span class="badge @statusBadgeClass ms-auto">@Model.SelectedStatus</span>
+                </div>
+            </div>
             <div class="card-body p-3 p-lg-4">
-                <div class="row g-3">
-                    <div class="col-12 col-lg-8">
-                        <label class="form-label fw-semibold">Title</label>
-                        <input type="text" class="form-control" value="@Model.ReportTitle" readonly />
+                <div class="row g-4">
+
+                    @* ── Fields column ── *@
+                    <div class="@(isKaizen ? "col-12 col-lg-6" : "col-12 col-lg-8")">
+                        <div class="row g-3">
+
+                            @* Machine Name / Area / About *@
+                            <div class="col-12">
+                                <label class="form-label fw-semibold text-muted text-uppercase">
+                                    @aboutLabel
+                                </label>
+                                <input type="text" class="form-control bg-light" readonly
+                                       value="@(isMachine ? Model.MachineName
+                                                                                      : isKaizen || isNearmiss ? Model.ReportArea
+                                                                                      : Model.ReportAbout)" />
+                            </div>
+
+                            @* Tanggal Lapor *@
+                            <div class="col-12">
+                                <label class="form-label fw-semibold text-muted text-uppercase">Tanggal Lapor</label>
+                                <input type="text" class="form-control bg-light" readonly
+                                       value="@Model.ReportDateText" />
+                            </div>
+
+                            @* Status *@
+                            <div class="col-12">
+                                <label class="form-label fw-semibold text-muted text-uppercase">Status</label>
+                                @* Dropdown kept for reference — now replaced with display text + hidden input *@
+                                @*
+                                <select asp-for="SelectedStatus" class="form-select">
+                                    <option value="">-- Select Status --</option>
+                                    <option value="Open">Open</option>
+                                    <option value="On Progress">On Progress</option>
+                                    <option value="Close">Close</option>
+                                </select>
+                                <span asp-validation-for="SelectedStatus" class="text-danger"></span>
+                                *@
+                                <input type="hidden" asp-for="SelectedStatus" id="selectedStatusInput" />
+                                <div class="form-control bg-light d-flex align-items-center gap-2" style="pointer-events:none;">
+                                    <span class="badge @statusBadgeClass">@Model.SelectedStatus</span>
+                                    <span>@Model.SelectedStatus</span>
+                                </div>
+                            </div>
+
+                            @* Description *@
+                            <div class="col-12">
+                                <label class="form-label fw-semibold text-muted text-uppercase">Description</label>
+                                <textarea class="form-control bg-light" rows="3" readonly>@Model.ReportDescription</textarea>
+                            </div>
+
+                            @* Description 2 — Kaizen only *@
+                            @if (isKaizen)
+                            {
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold text-muted text-uppercase">Kondisi Sesudah</label>
+                                    <textarea class="form-control bg-light" rows="3" readonly>@Model.ReportDescription2</textarea>
+                                </div>
+                            }
+
+                        </div>
                     </div>
-                    <div class="col-12 col-lg-4">
-                        <label class="form-label fw-semibold">Type</label>
-                        <input type="text" class="form-control" value="@Model.ReportType" readonly />
-                    </div>
-                    <div class="col-12 col-lg-4">
-                        <label class="form-label fw-semibold">Date</label>
-                        <input type="text" class="form-control" value="@Model.ReportDateText" readonly />
-                    </div>
-                    <div class="col-12 col-lg-4">
-                        <label class="form-label fw-semibold">Reported By</label>
-                        <input type="text" class="form-control" value="@Model.ReportedBy" readonly />
-                    </div>
-                    <div class="col-12 col-lg-4">
-                        <label class="form-label fw-semibold">Area</label>
-                        <input type="text" class="form-control" value="@Model.ReportArea" readonly />
-                    </div>
-                    <div class="col-12 col-lg-4">
-                        <label class="form-label fw-semibold">Status</label>
-                        <select asp-for="SelectedStatus" class="form-select">
-                            <option value="">Select status</option>
-                            <option value="Open">Open</option>
-                            <option value="On Progress">On Progress</option>
-                            <option value="Close">Close</option>
-                            <option value="Done">Done</option>
-                        </select>
-                        <span asp-validation-for="SelectedStatus" class="text-danger"></span>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label fw-semibold">Description</label>
-                        <textarea class="form-control" rows="4" readonly>@Model.ReportDescription</textarea>
-                    </div>
-@*                     @if (Model.Attachments.Count > 0)
+
+                    @* ── Photos column ── *@
+                    @if (!isKaizen)
                     {
-                        <div class="col-12">
-                            <label class="form-label fw-semibold">Attachments</label>
-                            <div class="list-group">
-                                @foreach (var attachment in Model.Attachments)
+                        <div class="col-12 col-lg-4">
+                            <label class="form-label fw-semibold text-muted text-uppercase">Photo</label>
+                            <div class="border rounded bg-light d-flex align-items-center justify-content-center overflow-hidden"
+                                 style="aspect-ratio:4/3;">
+                                @if (Model.Photo1Url != null)   @* ← wired *@
                                 {
-                                    <a href="@attachment.FilePath" class="list-group-item list-group-item-action" target="_blank">
-                                        @attachment.FileName
-                                        <small class="text-muted d-block">@attachment.UploadDateText</small>
-                                    </a>
+                                    <img src="@Model.Photo1Url" alt="Photo"
+                                         class="img-fluid w-100 h-100 object-fit-cover"
+                                         style="cursor:pointer;"
+                                         data-bs-toggle="modal" data-bs-target="#photoModal"
+                                         data-photo-src="@Model.Photo1Url" />
+                                }
+                                else
+                                {
+                                    <div class="text-center text-muted p-3">
+                                        <i class="bi bi-image fs-1 d-block mb-1 opacity-25"></i>
+                                        <small>No photo</small>
+                                    </div>
                                 }
                             </div>
                         </div>
-                    } *@
+                    }
+                    else
+                    {
+                        @* Kaizen: Photo 1 *@
+                        <div class="col-12 col-6 col-lg-3">
+                            <label class="form-label fw-semibold text-muted text-uppercase">Photo 1</label>
+                            <div class="border rounded bg-light d-flex align-items-center justify-content-center overflow-hidden"
+                                 style="aspect-ratio:4/3;">
+                                @if (Model.Photo1Url != null)   @* ← wired *@
+                                {
+                                    <img src="@Model.Photo1Url" alt="Photo 1"
+                                         class="img-fluid w-100 h-100 object-fit-cover"
+                                         style="cursor:pointer;"
+                                         data-bs-toggle="modal" data-bs-target="#photoModal"
+                                         data-photo-src="@Model.Photo1Url" />
+                                }
+                                else
+                                {
+                                    <div class="text-center text-muted p-3">
+                                        <i class="bi bi-image fs-1 d-block mb-1 opacity-25"></i>
+                                        <small>No photo</small>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        @* Kaizen: Photo 2 *@
+                        <div class="col-12 col-6 col-lg-3">
+                            <label class="form-label fw-semibold text-muted text-uppercase">
+                                Photo 2 <span class="badge bg-info text-dark ms-1">Kaizen</span>
+                            </label>
+                            <div class="border rounded bg-light d-flex align-items-center justify-content-center overflow-hidden"
+                                 style="aspect-ratio:4/3;">
+                                @if (Model.Photo2Url != null)   @* ← wired *@
+                                {
+                                    <img src="@Model.Photo2Url" alt="Photo 2"
+                                         class="img-fluid w-100 h-100 object-fit-cover"
+                                         style="cursor:pointer;"
+                                         data-bs-toggle="modal" data-bs-target="#photoModal"
+                                         data-photo-src="@Model.Photo2Url" />
+                                }
+                                else
+                                {
+                                    <div class="text-center text-muted p-3">
+                                        <i class="bi bi-image fs-1 d-block mb-1 opacity-25"></i>
+                                        <small>No photo</small>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+
                 </div>
+
+                @* ── Report-level Attachments ── *@
+                @if (Model.ReportAttachments.Any())
+                {
+                    <div class="mt-4">
+                        <label class="form-label fw-semibold text-muted text-uppercase">
+                            <i class="bi bi-paperclip me-1"></i>Attachments
+                        </label>
+                        <ul class="list-group list-group-flush">
+                            @foreach (var att in Model.ReportAttachments)
+                            {
+                                <li class="list-group-item px-0">
+                                    <a href="@att.FilePath" target="_blank" class="text-decoration-none">
+                                        <i class="bi bi-file-earmark me-1"></i>@att.FileName
+                                    </a>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                }
+
             </div>
         </div>
 
-        <div class="card border-0 shadow-sm">
+        @* ═══ FOLLOW-UP HISTORY ═══ *@
+        @if (Model.FollowUps.Any())
+        {
+            <div class="card border-0 shadow mb-3">
+                <div class="card-header bg-white border-bottom py-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-clock-history text-secondary"></i>
+                        <span class="fw-semibold">Riwayat Follow Up</span>
+                        <span class="badge bg-secondary ms-1">@Model.FollowUps.Count</span>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush">
+                        @foreach (var fu in Model.FollowUps)
+                        {
+                            <div class="list-group-item px-4 py-3">
+                                <div class="d-flex justify-content-between align-items-start mb-1">
+                                    <span class="fw-semibold">@fu.ResponsiblePerson</span>
+                                    <small class="text-muted">@fu.FollowUpDateText</small>
+                                </div>
+
+                                <p class="mb-1 text-muted" style="font-size:.9rem;">@fu.Description</p>
+
+                                @* MaterialsUsed — Machine only *@
+                                @if (isMachine && !string.IsNullOrWhiteSpace(fu.MaterialsUsed))
+                                {
+                                    <small class="text-secondary">
+                                        <i class="bi bi-tools me-1"></i>
+                                        Materials: @fu.MaterialsUsed
+                                    </small>
+                                }
+
+                                @* Follow-up attachments *@
+                                @if (fu.Attachments.Any())
+                                {
+                                    <div class="mt-2">
+                                        @foreach (var att in fu.Attachments)
+                                        {
+                                            <a href="@att.FilePath" target="_blank"
+                                               class="badge bg-light text-dark border me-1 text-decoration-none">
+                                                <i class="bi bi-paperclip me-1"></i>@att.FileName
+                                            </a>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+
+        @* ═══ BOTTOM CARD: Follow Up Input ═══ *@
+        <div class="card border-0 shadow mb-3">
+            <div class="card-header bg-white border-bottom py-3">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-pencil-square text-success"></i>
+                    <span class="fw-semibold">Follow Up</span>
+                </div>
+            </div>
             <div class="card-body p-3 p-lg-4">
-                <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
                 <div class="row g-3">
-                    <div class="col-12 col-lg-6">
-                        <label asp-for="FollowUpName" class="form-label fw-semibold">Name</label>
-                        <input asp-for="FollowUpName" class="form-control" />
+
+                    @* Follow-up Oleh *@
+                    <div class="col-12">
+                        <label asp-for="FollowUpName"
+                               class="form-label fw-semibold text-muted text-uppercase">
+                            Follow-up Oleh
+                        </label>
+                        <input asp-for="FollowUpName" class="form-control"
+                               placeholder="Nama penanggung jawab..." />
                         <span asp-validation-for="FollowUpName" class="text-danger"></span>
                     </div>
 
+                    @* MaterialsUsed — Machine only *@
+                    @if (isMachine)
+                    {
+                        <div class="col-12">
+                            <label asp-for="MaterialsUsed" @* ← matches [BindProperty] *@
+                                   class="form-label fw-semibold text-muted text-uppercase">
+                                Materials Used <span class="badge bg-secondary ms-1">Machine</span>
+                            </label>
+                            <input asp-for="MaterialsUsed" class="form-control"
+                                   placeholder="Nama / kode spare part..." />
+                            <span asp-validation-for="MaterialsUsed" class="text-danger"></span>
+                        </div>
+                    }
+
+                    @* Description *@
                     <div class="col-12">
-                        <label asp-for="FollowUpDescription" class="form-label fw-semibold">Follow Up Description</label>
-                        <textarea asp-for="FollowUpDescription" class="form-control" rows="5"></textarea>
+                        <label asp-for="FollowUpDescription"
+                               class="form-label fw-semibold text-muted text-uppercase">
+                            Deskripsi Follow Up
+                        </label>
+                        <textarea asp-for="FollowUpDescription" class="form-control"
+                                  rows="4"
+                                  placeholder="Jelaskan tindak lanjut yang dilakukan..."></textarea>
                         <span asp-validation-for="FollowUpDescription" class="text-danger"></span>
                     </div>
 
-                    <div class="col-12 col-lg-6">
-                        <label asp-for="FollowUpPhoto" class="form-label fw-semibold">Photo Upload (Optional)</label>
-                        <input asp-for="FollowUpPhoto" type="file" class="form-control" accept="image/*" />
+                    @* Photo Upload — maps to List<IFormFile> FollowUpAttachments *@
+                    <div class="col-12">
+                        <label class="form-label fw-semibold text-muted text-uppercase">
+                            Upload Foto <span class="text-muted fw-normal">(Opsional)</span>
+                        </label>
+                        <input name="FollowUpAttachments" @* ← matches [BindProperty] *@
+                               id="followUpPhotoInput"
+                               type="file"
+                               class="form-control"
+                               accept="image/*"
+                               multiple
+                               onchange="previewPhoto(this)" />
+                        <div id="photoPreviewWrap" class="mt-2 d-none">
+                            <img id="photoPreview" src="#" alt="Preview"
+                                 class="img-thumbnail" style="max-height:140px;" />
+                        </div>
                     </div>
 
-                    <div class="col-12 d-grid d-md-flex justify-content-md-end">
-                        <button type="submit" class="btn btn-primary">Save</button>
-                    </div>
                 </div>
             </div>
+
+            @* Action Buttons *@
+            <div class="card-footer bg-white border-top d-flex justify-content-end gap-2 py-3">
+                <button type="button" class="btn btn-outline-warning"
+                        data-bs-toggle="modal" data-bs-target="#draftModal">
+                    <i class="bi bi-floppy me-1"></i>Save Draft
+                </button>
+                <button type="button" class="btn btn-primary"
+                        data-bs-toggle="modal" data-bs-target="#saveModal">
+                    <i class="bi bi-check-lg me-1"></i>Simpan
+                </button>
+            </div>
         </div>
+
     </form>
+</div>
+
+@* ═══ MODAL: Photo Lightbox ═══ *@
+<div class="modal fade" id="photoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0">
+            <div class="modal-header border-0 pb-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center pt-0">
+                <img id="photoModalImg" src="#" alt="Photo" class="img-fluid rounded" />
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ═══ MODAL: Save Confirmation ═══ *@
+<div class="modal fade" id="saveModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-check-circle-fill text-primary fs-5"></i>
+                    <h6 class="modal-title fw-bold mb-0">Konfirmasi Simpan</h6>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-muted" style="font-size:.92rem;">
+                Apakah Anda yakin ingin <strong class="text-dark">menyimpan</strong> data follow up ini?
+                Laporan akan diperbarui sesuai dengan data yang diisi.
+            </div>
+            <div class="modal-footer border-top">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-primary" onclick="submitForm()">
+                    <i class="bi bi-check-lg me-1"></i>Ya, Simpan
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ═══ MODAL: Draft Confirmation ═══ *@
+<div class="modal fade" id="draftModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-floppy-fill text-warning fs-5"></i>
+                    <h6 class="modal-title fw-bold mb-0">Simpan sebagai Draft</h6>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-muted" style="font-size:.92rem;">
+                Status laporan akan diubah menjadi <strong class="text-warning">On Progress</strong>.
+                Apakah Anda ingin melanjutkan?
+            </div>
+            <div class="modal-footer border-top">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-warning text-dark" onclick="submitDraft()">
+                    <i class="bi bi-floppy me-1"></i>Ya, Simpan Draft
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        function submitDraft() {
+            document.getElementById('draftStatusInput').value = 'On Progress';
+            // Also update the hidden SelectedStatus so validation passes
+            document.getElementById('selectedStatusInput').value = 'On Progress';
+            document.getElementById('reportForm').submit();
+        }
+
+        function submitForm() {
+            // Ensure the current status value is carried through
+            document.getElementById('reportForm').submit();
+        }
+
+        function previewPhoto(input) {
+            const wrap    = document.getElementById('photoPreviewWrap');
+            const preview = document.getElementById('photoPreview');
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    preview.src = e.target.result;
+                    wrap.classList.remove('d-none');
+                };
+                reader.readAsDataURL(input.files[0]);
+            } else {
+                wrap.classList.add('d-none');
+            }
+        }
+
+        document.getElementById('photoModal').addEventListener('show.bs.modal', function (e) {
+            const src = e.relatedTarget?.dataset?.photoSrc;
+            if (src) document.getElementById('photoModalImg').src = src;
+        });
+    </script>
 }

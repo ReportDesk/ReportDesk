@@ -47,66 +47,91 @@ namespace ReportSystem.Pages.Admin
 
         public async Task OnGetAsync()
         {
-            try
+            var role = HttpContext.Session.GetString("Role") ?? string.Empty;
+
+            var roleTypeMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
-                if (IsMachineType)
+                ["Machine"] = "Machine",
+                ["Nearmiss"] = "Nearmiss",
+                ["Suggestion"] = "Suggestion",
+                ["Kaizen"] = "Kaizen"
+            };
+
+            if (roleTypeMap.TryGetValue(role, out var allowedType))
+            {
+                if (!string.Equals(ReportType, allowedType, StringComparison.OrdinalIgnoreCase))
                 {
-                    var machines = await _db.MasterMachines.OrderBy(m => m.MachineName).ToListAsync();
-                    MachineOptions = machines.Select(m => new SelectListItem
+                    Response.Redirect($"/Admin/ReportList?ReportType={allowedType}");
+                    return;
+                }
+            }
+            else if (role != "Admin")
+            {
+                Response.Redirect("/Login");
+                return;
+            }
+
+                try
+                {
+                    if (IsMachineType)
                     {
-                        Value = m.MachineId.ToString(),
-                        Text = m.MachineName
+                        var machines = await _db.MasterMachines.OrderBy(m => m.MachineName).ToListAsync();
+                        MachineOptions = machines.Select(m => new SelectListItem
+                        {
+                            Value = m.MachineId.ToString(),
+                            Text = m.MachineName
+                        }).ToList();
+                    }
+
+                    // Include Machine navigation so MachineName is available without a second query
+                    var query = _db.MasterReports
+                        .Include(r => r.Machine)
+                        .AsQueryable();
+
+                    if (!string.IsNullOrWhiteSpace(ReportType))
+                        query = query.Where(r => r.ReportType == ReportType);
+
+                    if (DateTime.TryParse(FromDate, out var fromDate))
+                        query = query.Where(r => r.SubmissionDate >= fromDate);
+
+                    if (DateTime.TryParse(ToDate, out var toDate))
+                        query = query.Where(r => r.SubmissionDate <= toDate.AddDays(1).AddTicks(-1));
+
+                    if (Status.Count > 0)
+                        query = query.Where(r => Status.Contains(r.Status));
+
+                    if (IsMachineType && MachineId.HasValue)
+                        query = query.Where(r => r.MachineId == MachineId.Value);
+
+                    var reports = await query
+                        .OrderByDescending(r => r.SubmissionDate)
+                        .ToListAsync();
+
+                    ReportRows = reports.Select(r => new ReportRow
+                    {
+                        ReportId = r.ReportId,
+                        ReportType = r.ReportType,
+                        ReportedBy = r.ReportedBy,
+                        About = r.About,
+                        Area = r.Area,
+                        MachineName = r.Machine?.MachineName ?? string.Empty,
+                        SubmissionDateText = r.SubmissionDate.ToString("dd MMM yyyy"),
+                        Status = r.Status,
+                        Title = r.Description ?? string.Empty,
+                        ShortDescription = r.Description ?? string.Empty,
+                        // ContextValue is the value shown in the dynamic "Area / Mesin / Tentang" column
+                        ContextValue = r.ReportType switch
+                        {
+                            "Machine" => r.Machine?.MachineName ?? string.Empty,
+                            "Suggestion" => r.About ?? string.Empty,
+                            _ => r.Area ?? string.Empty          // Nearmiss, Kaizen
+                        }
                     }).ToList();
                 }
-
-                // Include Machine navigation so MachineName is available without a second query
-                var query = _db.MasterReports
-                    .Include(r => r.Machine)
-                    .AsQueryable();
-
-                if (!string.IsNullOrWhiteSpace(ReportType))
-                    query = query.Where(r => r.ReportType == ReportType);
-
-                if (DateTime.TryParse(FromDate, out var fromDate))
-                    query = query.Where(r => r.SubmissionDate >= fromDate);
-
-                if (DateTime.TryParse(ToDate, out var toDate))
-                    query = query.Where(r => r.SubmissionDate <= toDate.AddDays(1).AddTicks(-1));
-
-                if (Status.Count > 0)
-                    query = query.Where(r => Status.Contains(r.Status));
-
-                if (IsMachineType && MachineId.HasValue)
-                    query = query.Where(r => r.MachineId == MachineId.Value);
-
-                var reports = await query
-                    .OrderByDescending(r => r.SubmissionDate)
-                    .ToListAsync();
-
-                ReportRows = reports.Select(r => new ReportRow
+                catch (Exception ex)
                 {
-                    ReportId = r.ReportId,
-                    ReportType = r.ReportType,
-                    ReportedBy = r.ReportedBy,
-                    Area = r.Area,
-                    MachineName = r.Machine?.MachineName ?? string.Empty,
-                    SubmissionDateText = r.SubmissionDate.ToString("dd MMM yyyy"),
-                    Status = r.Status,
-                    Title = r.Description ?? string.Empty,
-                    ShortDescription = r.Description ?? string.Empty,
-                    // ContextValue is the value shown in the dynamic "Area / Mesin / Tentang" column
-                    ContextValue = r.ReportType switch
-                    {
-                        "Machine" => r.Machine?.MachineName ?? string.Empty,
-                        "Suggestion" => r.Description ?? string.Empty, // adjust to your "About" field if different
-                        _ => r.Area ?? string.Empty          // Nearmiss, Kaizen
-                    }
-                }).ToList();
-            }
-            catch (Exception ex)
-            {
-                LoadError = $"Error loading report: {ex.Message}";
-            }
+                    LoadError = $"Error loading report: {ex.Message}";
+                }
         }
 
         public class ReportRow
@@ -115,6 +140,7 @@ namespace ReportSystem.Pages.Admin
             public string Title { get; set; } = string.Empty;
             public string ReportType { get; set; } = string.Empty;
             public string ReportedBy { get; set; } = string.Empty;
+            public string About { get; set; } = string.Empty;
             public string Area { get; set; } = string.Empty;
             public string MachineName { get; set; } = string.Empty;
             public string SubmissionDateText { get; set; } = string.Empty;

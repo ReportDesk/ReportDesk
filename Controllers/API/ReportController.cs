@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using ReportSystem.Helpers;
 using ReportSystem.Models;
 using ReportSystem.Services;
@@ -14,21 +15,18 @@ public sealed class ReportController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly IR2StorageService _r2;
-    private readonly IEmailService _emailService;
-    private readonly IDataProtectionProvider _dataProtectionProvider;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly ILogger<ReportController> _logger;
 
     public ReportController(
         AppDbContext context,
         IR2StorageService r2,
-        IEmailService emailService,
-        IDataProtectionProvider dataProtectionProvider,
+        IServiceScopeFactory serviceScopeFactory,
         ILogger<ReportController> logger)
     {
         _context = context;
         _r2 = r2;
-        _emailService = emailService;
-        _dataProtectionProvider = dataProtectionProvider;
+        _serviceScopeFactory = serviceScopeFactory;
         _logger = logger;
     }
 
@@ -175,7 +173,7 @@ public sealed class ReportController : ControllerBase
             "Report {ReportId} ({Type}) submitted by {Name} with {Count} attachment(s)",
             report.ReportId, report.ReportType, form.Name, attachments.Count);
 
-        await SendReportNotificationsAsync(report, ct);
+        QueueReportNotifications(report.ReportId, Request.Scheme, Request.Host.Value);
 
         return Ok(new
         {
@@ -184,15 +182,59 @@ public sealed class ReportController : ControllerBase
         });
     }
 
-    private async Task SendReportNotificationsAsync(MasterReport report, CancellationToken ct)
+    private void QueueReportNotifications(int reportId, string requestScheme, string requestHost)
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                using var scope = _serviceScopeFactory.CreateScope();
+                var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
+                var dataProtectionProvider = scope.ServiceProvider.GetRequiredService<IDataProtectionProvider>();
+                var logger = scope.ServiceProvider.GetRequiredService<ILogger<ReportController>>();
+
+                await SendReportNotificationsAsync(
+                    context,
+                    emailService,
+                    dataProtectionProvider,
+                    logger,
+                    reportId,
+                    requestScheme,
+                    requestHost,
+                    CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to run background report notification task for report {ReportId}", reportId);
+            }
+        });
+    }
+
+    private static async Task SendReportNotificationsAsync(
+        AppDbContext context,
+        IEmailService emailService,
+        IDataProtectionProvider dataProtectionProvider,
+        ILogger<ReportController> logger,
+        int reportId,
+        string requestScheme,
+        string requestHost,
+        CancellationToken ct)
     {
         try
         {
+            var report = await context.MasterReports
+                .AsNoTracking()
+                .FirstOrDefaultAsync(report => report.ReportId == reportId, ct);
+
+            if (report == null)
+                return;
+
             var recipientRole = GetNotificationRole(report.ReportType);
             if (recipientRole == null)
                 return;
 
-            var recipientQuery = _context.MasterUsers
+            var recipientQuery = context.MasterUsers
                 .AsNoTracking()
                 .Where(user => user.IsActive == 1 && user.Role == recipientRole);
 
@@ -208,23 +250,19 @@ public sealed class ReportController : ControllerBase
                 .Where(email => !string.IsNullOrWhiteSpace(email))
                 .ToList();
 
-            var protectedReportId = ReportIdProtector.Protect(_dataProtectionProvider, report.ReportId);
-            var notificationData = await CreateReportNotificationDataAsync(report, protectedReportId, ct);
-            var reportDetailUrl = Url.Page(
-                "/Admin/ReportDetail",
-                pageHandler: null,
-                values: new { reportType = report.ReportType, detailId = protectedReportId },
-                protocol: Request.Scheme);
+            var protectedReportId = ReportIdProtector.Protect(dataProtectionProvider, report.ReportId);
+            var notificationData = await CreateReportNotificationDataAsync(context, report, ct);
+            var reportDetailUrl = $"{requestScheme}://{requestHost}/Admin/ReportDetail/{Uri.EscapeDataString(report.ReportType)}/detail/{Uri.EscapeDataString(protectedReportId)}";
 
             foreach (var email in recipients)
             {
                 try
                 {
-                    await _emailService.SendReportNotificationAsync(report.ReportType, email, notificationData, reportDetailUrl);
+                    await emailService.SendReportNotificationAsync(report.ReportType, email, notificationData, reportDetailUrl);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(
+                    logger.LogError(
                         ex,
                         "Failed to send report notification for report {ReportId} to {Email}",
                         report.ReportId,
@@ -234,7 +272,7 @@ public sealed class ReportController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to process report notifications for report {ReportId}", report.ReportId);
+            logger.LogError(ex, "Failed to process report notifications for report {ReportId}", reportId);
         }
     }
 
@@ -250,33 +288,31 @@ public sealed class ReportController : ControllerBase
         };
     }
 
-    private async Task<object> CreateReportNotificationDataAsync(
+    private static async Task<ReportNotificationData> CreateReportNotificationDataAsync(
+        AppDbContext context,
         MasterReport report,
-        string protectedReportId,
         CancellationToken ct)
     {
         var machineName = string.Empty;
 
         if (report.MachineId.HasValue)
         {
-            machineName = await _context.MasterMachines
+            machineName = await context.MasterMachines
                 .AsNoTracking()
                 .Where(machine => machine.MachineId == report.MachineId.Value)
                 .Select(machine => machine.MachineName)
                 .FirstOrDefaultAsync(ct) ?? string.Empty;
         }
 
-        return new
+        return new ReportNotificationData
         {
-            ReportReference = protectedReportId,
-            report.ReportType,
             ReportedBy = report.ReportedBy,
-            report.SubmissionDate,
-            report.Area,
-            report.About,
+            SubmissionDate = report.SubmissionDate,
+            Area = report.Area,
+            About = report.About ?? string.Empty,
             MachineName = machineName,
-            report.Description,
-            report.Description2
+            Description = report.Description,
+            Description2 = report.Description2 ?? string.Empty
         };
     }
 

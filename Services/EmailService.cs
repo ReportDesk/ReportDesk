@@ -2,13 +2,25 @@ using Microsoft.Extensions.Configuration;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using MimeKit;
+using System.Net;
 
 namespace ReportSystem.Services
 {
     public interface IEmailService
     {
         Task SendForgotPasswordAsync(string toEmail, string resetLink);
-        Task SendReportNotificationAsync(string reportType, string toEmail, object reportData, string? reportDetailUrl = null);
+        Task SendReportNotificationAsync(string reportType, string toEmail, ReportNotificationData reportData, string? reportDetailUrl = null);
+    }
+
+    public sealed class ReportNotificationData
+    {
+        public string ReportedBy { get; set; } = string.Empty;
+        public DateTime SubmissionDate { get; set; }
+        public string Area { get; set; } = string.Empty;
+        public string About { get; set; } = string.Empty;
+        public string MachineName { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string Description2 { get; set; } = string.Empty;
     }
 
     public class EmailService : IEmailService
@@ -49,7 +61,7 @@ namespace ReportSystem.Services
             await SendEmailAsync(_fromEmail, _fromName, toEmail, subject, body);
         }
 
-        public async Task SendReportNotificationAsync(string reportType, string toEmail, object reportData, string? reportDetailUrl = null)
+        public async Task SendReportNotificationAsync(string reportType, string toEmail, ReportNotificationData reportData, string? reportDetailUrl = null)
         {
             var normalizedReportType = NormalizeReportType(reportType);
             if (normalizedReportType == null)
@@ -59,15 +71,68 @@ namespace ReportSystem.Services
             var detailLink = string.IsNullOrWhiteSpace(reportDetailUrl)
                 ? string.Empty
                 : $@"<p><a href='{reportDetailUrl}'>Open Report Detail</a></p>";
+            var submittedDataRows = BuildSubmittedDataRows(normalizedReportType, reportData);
 
             var body = $@"
                 <h2>Incoming Report Notification</h2>
                 <p>A new <strong>{normalizedReportType}</strong> report has been submitted.</p>
+                <table cellpadding='6' cellspacing='0' style='border-collapse:collapse;'>
+                    {submittedDataRows}
+                </table>
                 {detailLink}
-
                 ";
 
             await SendEmailAsync(_fromEmail, _fromName, toEmail, subject, body);
+        }
+
+        private static string BuildSubmittedDataRows(string reportType, ReportNotificationData reportData)
+        {
+            var rows = new List<string>
+            {
+                BuildRow("Pelapor", reportData.ReportedBy)
+            };
+
+            if (reportType == MachineReport)
+                rows.Add(BuildRow("Name Mesin", reportData.MachineName));
+
+            if (reportType == NearmissReport || reportType == KaizenReport)
+                rows.Add(BuildRow("Area", reportData.Area));
+
+            if (reportType == Suggestion)
+                rows.Add(BuildRow("Perihal", reportData.About));
+
+            if (reportType == KaizenReport)
+            {
+                rows.Add(BuildRow("Kondisi Sebelum", reportData.Description));
+                rows.Add(BuildRow("Kondisi Sesudah", reportData.Description2));
+            }
+            else if (reportType == MachineReport)
+            {
+                rows.Add(BuildRow("Kondisi Mesin", reportData.Description));
+            }
+            else if (reportType == Suggestion)
+            {
+                rows.Add(BuildRow("Saran", reportData.Description));
+            }
+            else if (reportType == NearmissReport)
+            {
+                rows.Add(BuildRow("Kondisi Berbahaya", reportData.Description));
+            }
+
+                rows.Add(BuildRow("Submission Date", reportData.SubmissionDate.ToString("dd MMM yyyy, HH:mm")));
+            return string.Join(Environment.NewLine, rows);
+        }
+
+        private static string BuildRow(string label, string? value)
+        {
+            var safeLabel = WebUtility.HtmlEncode(label);
+            var safeValue = WebUtility.HtmlEncode(value ?? string.Empty);
+
+            return $@"
+                    <tr>
+                        <td style='font-weight:bold; vertical-align:top;'>{safeLabel}</td>
+                        <td style='vertical-align:top;'>{safeValue}</td>
+                    </tr>";
         }
 
         private static string? NormalizeReportType(string reportType)

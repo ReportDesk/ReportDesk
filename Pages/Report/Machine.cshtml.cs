@@ -41,6 +41,7 @@ namespace ReportSystem.Pages.Report
                 Machines = await _db.Set<MasterMachine>()
                     .AsNoTracking()
                     .OrderBy(m => m.MachineName)
+                    .ThenBy(m => m.MachineArea)
                     .ToListAsync();
             }
             catch (Exception ex)

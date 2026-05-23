@@ -58,7 +58,11 @@
                                     <option value="">— Select machine —</option>
                                     @foreach (var machine in Model.Machines)
                                     {
-                                        <option value="@machine.MachineId">@machine.MachineName</option>
+                                        var machineLabel = string.IsNullOrWhiteSpace(machine.MachineArea)
+                                            ? machine.MachineName
+                                            : $"{machine.MachineName} - {machine.MachineArea}";
+
+                                        <option value="@machine.MachineId">@machineLabel</option>
                                     }
                                 </select>
                                 <span id="errMachine" class="text-danger small"></span>

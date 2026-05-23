@@ -64,10 +64,22 @@
 
     <div class="row mb-3">
         <div class="col-12">
-            <h4 class="fw-bold mb-1">@Model.PageTitle</h4>
-            <small class="text-muted">Filter and review submitted reports.</small>
+            <h3 class="fw-bold mb-1">@Model.PageTitle List</h3>
         </div>
     </div>
+
+    @if (HttpContext.Session.GetString("Role") == "Admin" || HttpContext.Session.GetString("Role") == "Machine")
+    {
+        <!-- Breadcrumb -->
+        <div class="row mb-2">
+            <div class="col-lg-12 col-md-12 col-sm-12">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="~/Admin/Main">Home</a></li>
+                    <li class="breadcrumb-item active">User Management</li>
+                </ol>
+            </div>
+        </div>
+    }
 
     @if (!string.IsNullOrWhiteSpace(Model.LoadError))
     {
@@ -134,9 +146,9 @@
 
                                 var labelText = s switch
                                 {
-                                    "open" => "Terbuka",
-                                    "on progress" => "Sedang Diproses",
-                                    "close" => "Selesai",
+                                    "open" => "Open",
+                                    "on progress" => "On Progress",
+                                    "close" => "Close",
                                     _ => s
                                 };
 
@@ -185,7 +197,7 @@
                             <th scope="col" style="width:115px">Time</th>
                             <th scope="col">@Model.ContextColumnLabel</th>
                             <th scope="col">Reporter</th>
-                            <th scope="col">Short Description</th>
+                            <th scope="col">Description</th>
                             <th scope="col"
                                 style="width:80px"
                                 class="text-center">
@@ -212,13 +224,13 @@
                                 var (pillClass, pillLabel) = report.Status?.ToLower() switch
                                 {
                                     "open"
-                                    => ("bg-danger-subtle text-danger border border-danger-subtle", "Open"),
+                                    => ("bg-success-subtle text-success border border-success-subtle", "Open"),
 
                                     "on progress" or "onprogress" or "on-progress"
                                     => ("bg-warning-subtle text-warning border border-warning-subtle", "On Progress"),
 
                                     "close" or "closed"
-                                    => ("bg-success-subtle text-success border border-success-subtle", "Close"),
+                                    => ("bg-danger-subtle text-danger border border-danger-subtle", "Close"),
 
                                     _ => ("bg-secondary-subtle text-secondary border border-secondary-subtle",
                                     report.Status ?? "—")

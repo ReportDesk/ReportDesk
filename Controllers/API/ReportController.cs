@@ -111,6 +111,7 @@ public sealed class ReportController : ControllerBase
         {
             ReportType = form.ReportType,
             ReportedBy = form.Name,
+            About = form.About,
             Area = form.Area,
             Description = form.Description,
             Description2 = form.Description2 ?? string.Empty,
@@ -174,6 +175,7 @@ public sealed class ReportController : ControllerBase
         public string ReportType { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
         public string Area { get; set; } = string.Empty;
+        public string? About { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public string? Description2 { get; set; } = string.Empty;
         public int? MachineId { get; set; }

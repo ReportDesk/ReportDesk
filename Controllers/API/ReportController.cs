@@ -1,7 +1,9 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using ReportSystem.Services;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.EntityFrameworkCore;
+using ReportSystem.Helpers;
 using ReportSystem.Models;
-using System.ComponentModel.DataAnnotations;
+using ReportSystem.Services;
 
 namespace ReportSystem.Controllers.API;
 
@@ -12,32 +14,27 @@ public sealed class ReportController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly IR2StorageService _r2;
+    private readonly IEmailService _emailService;
+    private readonly IDataProtectionProvider _dataProtectionProvider;
     private readonly ILogger<ReportController> _logger;
 
-    public ReportController(AppDbContext context, IR2StorageService r2, ILogger<ReportController> logger)
+    public ReportController(
+        AppDbContext context,
+        IR2StorageService r2,
+        IEmailService emailService,
+        IDataProtectionProvider dataProtectionProvider,
+        ILogger<ReportController> logger)
     {
         _context = context;
         _r2 = r2;
+        _emailService = emailService;
+        _dataProtectionProvider = dataProtectionProvider;
         _logger = logger;
     }
 
-    // ── POST /api/report/submit ───────────────────────────────────────────────
-    /// <summary>
-    /// Final step of the report submission flow.
-    ///
-    /// Expects the form fields + one or more tempKeys that were already
-    /// uploaded via POST /api/upload/temp.
-    ///
-    /// Flow:
-    ///   1. Validate inputs
-    ///   2. Create MasterReport row (get ReportId from DB)
-    ///   3. Move each temp file → reports/{reportId}/ in R2
-    ///   4. Create Attachment rows pointing to the final R2 URLs
-    /// </summary>
     [HttpPost("submit")]
     public async Task<IActionResult> SubmitReport([FromForm] SubmitReportForm form, CancellationToken ct)
     {
-        // ── 1. Basic field validation ─────────────────────────────────────────
         if (string.IsNullOrWhiteSpace(form.ReportType) ||
             string.IsNullOrWhiteSpace(form.Name) ||
             string.IsNullOrWhiteSpace(form.Description))
@@ -49,68 +46,102 @@ public sealed class ReportController : ControllerBase
         if (!validTypes.Contains(form.ReportType))
             return BadRequest(new { message = "Invalid report type." });
 
-        if (form.ReportType == "Machine" && (form.MachineId == null || form.MachineId == 0))
+        if (form.ReportType == "Machine" && (form.MachineId is null or 0))
             return BadRequest(new { message = "Machine is required for Machine report." });
 
-        // ── 2. Validate temp keys ─────────────────────────────────────────────
-        // Collect whichever keys were sent (Photo / BeforePhoto / AfterPhoto slots)
-        var tempKeys = new List<(string Key, string Slot)>();
+        var tempUploads = new List<(string Key, string Slot, string Token)>();
 
-        if (!string.IsNullOrWhiteSpace(form.PhotoTempKey))
+        if (form.PhotoTempKeys.Count != form.PhotoUploadOwnerTokens.Count)
+            return BadRequest(new { message = "Uploaded photo tokens do not match the selected photos." });
+
+        if (form.PhotoTempKeys.Count > 0)
         {
             if (form.ReportType == "Kaizen")
                 return BadRequest(new { message = "Kaizen uses BeforePhoto and AfterPhoto, not Photo." });
 
-            tempKeys.Add((form.PhotoTempKey, "photo"));
+            for (var i = 0; i < form.PhotoTempKeys.Count; i++)
+            {
+                var photoTempKey = form.PhotoTempKeys[i];
+                var photoToken = form.PhotoUploadOwnerTokens[i];
+
+                if (string.IsNullOrWhiteSpace(photoTempKey) || string.IsNullOrWhiteSpace(photoToken))
+                    return BadRequest(new { message = "Photo upload token is required." });
+
+                tempUploads.Add((photoTempKey, "photo", photoToken));
+            }
         }
 
-        if (!string.IsNullOrWhiteSpace(form.BeforePhotoTempKey))
+        if (form.BeforePhotoTempKeys.Count != form.BeforePhotoUploadOwnerTokens.Count)
+            return BadRequest(new { message = "Before photo tokens do not match the selected photos." });
+
+        if (form.AfterPhotoTempKeys.Count != form.AfterPhotoUploadOwnerTokens.Count)
+            return BadRequest(new { message = "After photo tokens do not match the selected photos." });
+
+        if (form.BeforePhotoTempKeys.Count > 0)
         {
             if (form.ReportType != "Kaizen")
                 return BadRequest(new { message = "BeforePhoto is only valid for Kaizen reports." });
 
-            tempKeys.Add((form.BeforePhotoTempKey, "before"));
+            for (var i = 0; i < form.BeforePhotoTempKeys.Count; i++)
+            {
+                var beforePhotoTempKey = form.BeforePhotoTempKeys[i];
+                var beforePhotoToken = form.BeforePhotoUploadOwnerTokens[i];
+
+                if (string.IsNullOrWhiteSpace(beforePhotoTempKey) || string.IsNullOrWhiteSpace(beforePhotoToken))
+                    return BadRequest(new { message = "Before photo upload token is required." });
+
+                tempUploads.Add((beforePhotoTempKey, "before", beforePhotoToken));
+            }
         }
 
-        if (!string.IsNullOrWhiteSpace(form.AfterPhotoTempKey))
+        if (form.AfterPhotoTempKeys.Count > 0)
         {
             if (form.ReportType != "Kaizen")
                 return BadRequest(new { message = "AfterPhoto is only valid for Kaizen reports." });
 
-            tempKeys.Add((form.AfterPhotoTempKey, "after"));
+            for (var i = 0; i < form.AfterPhotoTempKeys.Count; i++)
+            {
+                var afterPhotoTempKey = form.AfterPhotoTempKeys[i];
+                var afterPhotoToken = form.AfterPhotoUploadOwnerTokens[i];
+
+                if (string.IsNullOrWhiteSpace(afterPhotoTempKey) || string.IsNullOrWhiteSpace(afterPhotoToken))
+                    return BadRequest(new { message = "After photo upload token is required." });
+
+                tempUploads.Add((afterPhotoTempKey, "after", afterPhotoToken));
+            }
         }
 
-        // All supplied keys must come from the temp/ prefix (never let clients
-        // reference already-finalized report files)
-        if (tempKeys.Any(t => !t.Key.StartsWith("temp/")))
+        if (tempUploads.Any(t => !t.Key.StartsWith("temp/", StringComparison.Ordinal)))
             return BadRequest(new { message = "One or more keys are not valid temp uploads." });
 
-        // ── 3. Create MasterReport ────────────────────────────────────────────
+        if (tempUploads.Any(t => !t.Key.StartsWith($"temp/{t.Token}/", StringComparison.Ordinal)))
+            return BadRequest(new { message = "One or more temp uploads do not match the provided upload token." });
+
         var now = DateTime.UtcNow;
 
         var report = new MasterReport
         {
             ReportType = form.ReportType,
             ReportedBy = form.Name,
+            About = form.About,
             Area = form.Area,
             Description = form.Description,
-            Description2 = form.Description2 ?? String.Empty,
+            Description2 = form.Description2 ?? string.Empty,
             Status = "open",
             SubmissionDate = now,
             UpdatedDate = now,
-            UpdatedBy = 0,          // replace with int user ID from claims when auth is added
+            UpdatedBy = 0,
             MachineId = form.MachineId
         };
 
         _context.MasterReports.Add(report);
-        await _context.SaveChangesAsync(ct);   // EF populates report.ReportId here
+        await _context.SaveChangesAsync(ct);
 
-        // ── 4. Finalize each image in R2 + build Attachment rows ──────────────
         var attachments = new List<Attachment>();
 
         try
         {
-            foreach (var (tempKey, slot) in tempKeys)
+            foreach (var (tempKey, slot, _) in tempUploads)
             {
                 var finalKey = await _r2.FinalizeTempAsync(tempKey, report.ReportId.ToString(), ct);
                 var publicUrl = _r2.GetPublicUrl(finalKey);
@@ -119,9 +150,9 @@ public sealed class ReportController : ControllerBase
                 {
                     ReportId = report.ReportId,
                     FollowUpId = null,
-                    FileName = $"{slot}_{Path.GetFileName(finalKey)}",
+                    FileName = $"{slot}_{attachments.Count + 1}_{Path.GetFileName(finalKey)}",
                     FilePath = publicUrl,
-                    FileSize = 0,          // size not tracked at this point; update if needed
+                    FileSize = 0,
                     FileType = "image/webp",
                     UploadDate = now,
                     UploadedBy = form.Name
@@ -130,8 +161,6 @@ public sealed class ReportController : ControllerBase
         }
         catch (Exception ex)
         {
-            // R2 finalize failed — the MasterReport row was already saved.
-            // Log and return 500; the temp files will be cleaned up by TempFileCleanupService.
             _logger.LogError(ex, "R2 finalize failed for report {ReportId}", report.ReportId);
             return StatusCode(500, new { message = "Report saved but image upload failed. Please try again." });
         }
@@ -146,6 +175,8 @@ public sealed class ReportController : ControllerBase
             "Report {ReportId} ({Type}) submitted by {Name} with {Count} attachment(s)",
             report.ReportId, report.ReportType, form.Name, attachments.Count);
 
+        await SendReportNotificationsAsync(report, ct);
+
         return Ok(new
         {
             message = "Report submitted successfully.",
@@ -153,25 +184,116 @@ public sealed class ReportController : ControllerBase
         });
     }
 
-    // ── Form model ────────────────────────────────────────────────────────────
+    private async Task SendReportNotificationsAsync(MasterReport report, CancellationToken ct)
+    {
+        try
+        {
+            var recipientRole = GetNotificationRole(report.ReportType);
+            if (recipientRole == null)
+                return;
+
+            var recipientQuery = _context.MasterUsers
+                .AsNoTracking()
+                .Where(user => user.IsActive == 1 && user.Role == recipientRole);
+
+            // To include Admin recipients later, customize the filter above, for example:
+            // .Where(user => user.IsActive == 1 && (user.Role == recipientRole || user.Role == "Admin"));
+
+            var recipientEmails = await recipientQuery
+                .Select(user => user.Email)
+                .Distinct()
+                .ToListAsync(ct);
+
+            var recipients = recipientEmails
+                .Where(email => !string.IsNullOrWhiteSpace(email))
+                .ToList();
+
+            var protectedReportId = ReportIdProtector.Protect(_dataProtectionProvider, report.ReportId);
+            var notificationData = await CreateReportNotificationDataAsync(report, protectedReportId, ct);
+            var reportDetailUrl = Url.Page(
+                "/Admin/ReportDetail",
+                pageHandler: null,
+                values: new { reportType = report.ReportType, detailId = protectedReportId },
+                protocol: Request.Scheme);
+
+            foreach (var email in recipients)
+            {
+                try
+                {
+                    await _emailService.SendReportNotificationAsync(report.ReportType, email, notificationData, reportDetailUrl);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(
+                        ex,
+                        "Failed to send report notification for report {ReportId} to {Email}",
+                        report.ReportId,
+                        email);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to process report notifications for report {ReportId}", report.ReportId);
+        }
+    }
+
+    private static string? GetNotificationRole(string reportType)
+    {
+        return reportType.Trim().ToLowerInvariant() switch
+        {
+            "machine" => "Machine",
+            "nearmiss" => "Nearmiss",
+            "suggestion" => "Suggestion",
+            "kaizen" => "Kaizen",
+            _ => null
+        };
+    }
+
+    private async Task<object> CreateReportNotificationDataAsync(
+        MasterReport report,
+        string protectedReportId,
+        CancellationToken ct)
+    {
+        var machineName = string.Empty;
+
+        if (report.MachineId.HasValue)
+        {
+            machineName = await _context.MasterMachines
+                .AsNoTracking()
+                .Where(machine => machine.MachineId == report.MachineId.Value)
+                .Select(machine => machine.MachineName)
+                .FirstOrDefaultAsync(ct) ?? string.Empty;
+        }
+
+        return new
+        {
+            ReportReference = protectedReportId,
+            report.ReportType,
+            ReportedBy = report.ReportedBy,
+            report.SubmissionDate,
+            report.Area,
+            report.About,
+            MachineName = machineName,
+            report.Description,
+            report.Description2
+        };
+    }
 
     public class SubmitReportForm
     {
-        // Report type: "NearMiss" | "Suggestion" | "Kaizen" | "Machine"
         public string ReportType { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
         public string Area { get; set; } = string.Empty;
+        public string? About { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public string? Description2 { get; set; } = string.Empty;
-
-        // Machine reports only
         public int? MachineId { get; set; }
-
-        // Temp keys returned by POST /api/upload/temp
-        // NearMiss, Suggestion, Machine → PhotoTempKey
-        // Kaizen                         → BeforePhotoTempKey + AfterPhotoTempKey
-        public string? PhotoTempKey { get; set; }
-        public string? BeforePhotoTempKey { get; set; }
-        public string? AfterPhotoTempKey { get; set; }
+        public List<string> PhotoTempKeys { get; set; } = new();
+        public List<string> PhotoUploadOwnerTokens { get; set; } = new();
+        public List<string> BeforePhotoTempKeys { get; set; } = new();
+        public List<string> BeforePhotoUploadOwnerTokens { get; set; } = new();
+        public List<string> AfterPhotoTempKeys { get; set; } = new();
+        public List<string> AfterPhotoUploadOwnerTokens { get; set; } = new();
     }
 }

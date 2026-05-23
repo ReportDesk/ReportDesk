@@ -6,8 +6,10 @@ namespace ReportSystem.Services
 {
     public interface IImageProcessingService
     {
-        Task<MemoryStream> ProcessAsync(Stream input, CancellationToken ct = default);
+        Task<ProcessedImageResult> ProcessAsync(Stream input, CancellationToken ct = default);
     }
+
+    public record ProcessedImageResult(MemoryStream Stream, int Width, int Height);
 
     public class ImageProcessingService : IImageProcessingService
     {
@@ -23,7 +25,7 @@ namespace ReportSystem.Services
             _logger = logger;
         }
 
-        public async Task<MemoryStream> ProcessAsync(Stream input, CancellationToken ct = default)
+        public async Task<ProcessedImageResult> ProcessAsync(Stream input, CancellationToken ct = default)
         {
             using var image = await Image.LoadAsync(input, ct);
 
@@ -63,7 +65,7 @@ namespace ReportSystem.Services
             output.Position = 0;
 
             _logger.LogDebug("Output size: {Bytes:N0} bytes", output.Length);
-            return output;
+            return new ProcessedImageResult(output, image.Width, image.Height);
         }
     }
 }

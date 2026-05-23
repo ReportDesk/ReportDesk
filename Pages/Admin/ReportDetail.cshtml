@@ -1,118 +1,802 @@
-@page "{reportId:int}"
+﻿@page "{reportType}/detail/{detailId}"
 @model ReportSystem.Pages.Admin.ReportDetailModel
 @{
     ViewData["Title"] = "Report Detail";
+    bool isMachine = Model.ReportType?.ToLower() == "machine";
+    bool isKaizen = Model.ReportType?.ToLower() == "kaizen";
+    bool isNearmiss = Model.ReportType?.ToLower() == "nearmiss";
+    bool hasReportPhotos = Model.ReportPhotos.Any();
+    bool hasBeforePhotos = Model.BeforePhotos.Any();
+    bool hasAfterPhotos = Model.AfterPhotos.Any();
+    bool hasAnyKaizenPhotos = hasBeforePhotos || hasAfterPhotos;
+    string fieldColumnClass = isKaizen && hasAnyKaizenPhotos ? "col-12 col-lg-6"
+                            : !isKaizen && hasReportPhotos ? "col-12 col-lg-8"
+                            : "col-12";
+    string statusText = Model.ReportStatus?.ToLowerInvariant() ?? string.Empty;
+    string? followUpDisabled = Model.IsReportClosed ? "disabled" : null;
+
+    string aboutLabel = isMachine ? "Machine Name"
+                      : isKaizen || isNearmiss ? "Area"
+                      : "About";
+
+    string statusBadgeClass = statusText switch
+    {
+        "open" => "bg-success",
+        "on progress" => "bg-warning text-dark",
+        "close" => "bg-danger",
+        "closed" => "bg-danger",
+        _ => "bg-secondary"
+    };
 }
 
 <div class="container-body">
+
+    @* Header *@
     <div class="row mb-3">
         <div class="col-12 d-flex justify-content-between align-items-center">
-            <div>
-                <h4 class="fw-bold mb-1">Report Detail</h4>
-                <small class="text-muted">Report ID: @Model.ReportId</small>
-            </div>
-            <a asp-page="/Admin/ReportList" class="btn btn-outline-secondary btn-sm">Back to List</a>
+            <h4 class="fw-bold mb-1">Report Detail</h4>
+            <a asp-page="/Admin/ReportList"
+               asp-route-reportType="@Model.ReportType"
+               class="btn btn-outline-secondary">
+                &larr; Back to List
+            </a>
         </div>
     </div>
 
+    @* Alerts *@
     @if (!string.IsNullOrWhiteSpace(Model.SuccessMessage))
     {
-        <div class="alert alert-success" role="alert">
-            @Model.SuccessMessage
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle me-2"></i>@Model.SuccessMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+    @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-x-circle me-2"></i>@Model.ErrorMessage
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     }
 
-    <form method="post" enctype="multipart/form-data">
-        <input type="hidden" asp-for="ReportId" />
+    <form method="post"
+          enctype="multipart/form-data"
+          id="reportForm"
+          asp-page-handler="SaveFollowUp">
+        @* ← matches OnPostSaveFollowUpAsync *@
 
-        <div class="card border-0 shadow-sm mb-3">
+        @* Hidden input *@
+        <input type="hidden" asp-for="reportId" />
+        <input type="hidden" id="draftStatusInput" name="DraftStatus" value="" />
+        <input type="hidden" name="handler" value="SaveFollowUp" />
+
+        @* ═══ TOP CARD: Report Data ═══ *@
+        <div class="card border-0 shadow mb-3">
+            <div class="card-header bg-white border-bottom py-3">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-file-earmark-text text-primary"></i>
+                    <span class="fw-semibold">Informasi Laporan</span>
+                    <span class="badge @statusBadgeClass ms-auto fs-6 px-3 py-2">@statusText</span>
+                </div>
+            </div>
+            <div class="card-body p-3 p-lg-4">
+                <div class="row g-4">
+
+                    @* ── Fields column ── *@
+                    <div class="@fieldColumnClass">
+                        <div class="row g-3">
+
+                            @* Machine Name / Area / About *@
+                            <div class="col-12">
+                                <label class="form-label fw-semibold  ">
+                                    @aboutLabel
+                                </label>
+                                <input type="text" class="form-control bg-light" readonly
+                                       value="@(isMachine ? Model.MachineName
+                                                                                      : isKaizen || isNearmiss ? Model.ReportArea
+                                                                                      : Model.ReportAbout)" />
+                            </div>
+
+                            @* Tanggal Lapor *@
+                            <div class="col-12">
+                                <label class="form-label fw-semibold  ">Tanggal Lapor</label>
+                                <input type="text" class="form-control bg-light" readonly
+                                       value="@Model.ReportDateText" />
+                            </div>
+
+                            @* Description *@
+
+                            @if (isKaizen)
+                            {
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold  ">Kondisi Sebelum</label>
+                                    <textarea class="form-control bg-light" rows="3" readonly>@Model.ReportDescription</textarea>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold  ">Kondisi Sesudah</label>
+                                    <textarea class="form-control bg-light" rows="3" readonly>@Model.ReportDescription2</textarea>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="col-12">
+                                    <label class="form-label fw-semibold  ">Description</label>
+                                    <textarea class="form-control bg-light" rows="3" readonly>@Model.ReportDescription</textarea>
+                                </div>
+                            }
+
+                        </div>
+                    </div>
+
+                    @* ── Photos column ── *@
+                    @if (!isKaizen && hasReportPhotos)
+                    {
+                        <div class="col-12 col-lg-4">
+                            <label class="form-label fw-semibold  ">Foto</label>
+                            @if (Model.ReportPhotos.Count > 1)
+                            {
+                                <select id="reportPhotoSelect" class="form-select form-select-sm mb-2">
+                                    @for (var i = 0; i < Model.ReportPhotos.Count; i++)
+                                    {
+                                        <option value="@Model.ReportPhotos[i].FilePath">Photo @(i + 1) of @Model.ReportPhotos.Count</option>
+                                    }
+                                </select>
+                            }
+                            <div class="border rounded bg-light d-flex align-items-center justify-content-center overflow-hidden"
+                                 style="aspect-ratio:4/3;">
+                                <img id="reportPhotoImg"
+                                     src="@Model.ReportPhotos.First().FilePath"
+                                     alt="Photo"
+                                     class="img-fluid w-100 h-100 object-fit-contain"
+                                     style="cursor:pointer;"
+                                     data-bs-toggle="modal" data-bs-target="#photoModal"
+                                     data-photo-src="@Model.ReportPhotos.First().FilePath" />
+                            </div>
+                        </div>
+                    }
+                    else if (isKaizen)
+                    {
+                        @* Kaizen: Before Photos *@
+                        @if (hasBeforePhotos)
+                        {
+                            <div class="col-12 col-6 col-lg-3">
+                                <label class="form-label fw-semibold  ">Foto Kondisi Sebelum</label>
+                                @if (Model.BeforePhotos.Count > 1)
+                                {
+                                    <select id="beforePhotoSelect" class="form-select form-select-sm mb-2">
+                                        @for (var i = 0; i < Model.BeforePhotos.Count; i++)
+                                        {
+                                            <option value="@Model.BeforePhotos[i].FilePath">Photo @(i + 1) of @Model.BeforePhotos.Count</option>
+                                        }
+                                    </select>
+                                }
+                                <div class="border rounded bg-light d-flex align-items-center justify-content-center overflow-hidden"
+                                     style="aspect-ratio:4/3;">
+                                    <img id="beforePhotoImg"
+                                         src="@Model.BeforePhotos.First().FilePath"
+                                         alt="Photo 1"
+                                         class="img-fluid w-100 h-100 object-fit-contain"
+                                         style="cursor:pointer;"
+                                         data-bs-toggle="modal" data-bs-target="#photoModal"
+                                         data-photo-src="@Model.BeforePhotos.First().FilePath" />
+                                </div>
+                            </div>
+                        }
+
+                        @* Kaizen: After Photos *@
+                        @if (hasAfterPhotos)
+                        {
+                            <div class="col-12 col-6 col-lg-3">
+                                <label class="form-label fw-semibold  ">
+                                    Foto Kondisi Sesudah
+                                </label>
+                                @if (Model.AfterPhotos.Count > 1)
+                                {
+                                    <select id="afterPhotoSelect" class="form-select form-select-sm mb-2">
+                                        @for (var i = 0; i < Model.AfterPhotos.Count; i++)
+                                        {
+                                            <option value="@Model.AfterPhotos[i].FilePath">Photo @(i + 1) of @Model.AfterPhotos.Count</option>
+                                        }
+                                    </select>
+                                }
+                                <div class="border rounded bg-light d-flex align-items-center justify-content-center overflow-hidden"
+                                     style="aspect-ratio:4/3;">
+                                    <img id="afterPhotoImg"
+                                         src="@Model.AfterPhotos.First().FilePath"
+                                         alt="Photo 2"
+                                         class="img-fluid w-100 h-100 object-fit-contain"
+                                         style="cursor:pointer;"
+                                         data-bs-toggle="modal" data-bs-target="#photoModal"
+                                         data-photo-src="@Model.AfterPhotos.First().FilePath" />
+                                </div>
+                            </div>
+                        }
+                    }
+
+                </div>
+
+                @* ── Report-level Attachments ── *@
+                @if (Model.ReportAttachments.Any())
+                {
+                    <div class="mt-4">
+                        <label class="form-label fw-semibold  ">
+                            <i class="bi bi-paperclip me-1"></i>Attachments
+                        </label>
+                        <ul class="list-group list-group-flush">
+                            @foreach (var att in Model.ReportAttachments)
+                            {
+                                <li class="list-group-item px-0">
+                                    <a href="@att.FilePath" target="_blank" class="text-decoration-none">
+                                        <i class="bi bi-file-earmark me-1"></i>@att.FileName
+                                    </a>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                }
+
+            </div>
+        </div>
+
+        @* ═══ BOTTOM CARD: Follow Up Input ═══ *@
+        <div class="card border-0 shadow mb-3">
+            <div class="card-header bg-white border-bottom py-3">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-pencil-square text-success"></i>
+                    <span class="fw-semibold">Follow Up</span>
+                    @if (Model.HasFollowUp && !string.IsNullOrWhiteSpace(Model.FollowUpDateText))
+                    {
+                        <small class="ms-auto">@Model.FollowUpDateText</small>
+                    }
+                </div>
+            </div>
             <div class="card-body p-3 p-lg-4">
                 <div class="row g-3">
-                    <div class="col-12 col-lg-8">
-                        <label class="form-label fw-semibold">Title</label>
-                        <input type="text" class="form-control" value="@Model.ReportTitle" readonly />
+                    <div class="col-12 @(Model.FollowUpPhotos.Any() ? "col-lg-8" : "")">
+                        <div class="row g-3">
+
+                            @* Follow-up Oleh *@
+                            <div class="col-12">
+                                <label asp-for="FollowUpName"
+                                       class="form-label fw-semibold  ">
+                                    Follow-up Oleh
+                                </label>
+                                <input asp-for="FollowUpName" class="form-control"
+                                       placeholder="Nama penanggung jawab..."
+                                       disabled="@followUpDisabled" />
+                                <span asp-validation-for="FollowUpName" class="text-danger"></span>
+                            </div>
+
+                            @* MaterialsUsed — Machine only *@
+                            @if (isMachine)
+                            {
+                                <div class="col-12">
+                                    <label asp-for="MaterialsUsed" @* ← matches [BindProperty] *@
+                                           class="form-label fw-semibold  ">
+                                        Penggunaan Sparepart
+                                    </label>
+                                    <input asp-for="MaterialsUsed" class="form-control"
+                                           placeholder="Nama / kode spare part..."
+                                           disabled="@followUpDisabled" />
+                                    <span asp-validation-for="MaterialsUsed" class="text-danger"></span>
+                                </div>
+                            }
+
+                            @* Description *@
+                            <div class="col-12">
+                                <label asp-for="FollowUpDescription"
+                                       class="form-label fw-semibold ">
+                                    Detail Follow Up
+                                </label>
+                                <textarea asp-for="FollowUpDescription" class="form-control"
+                                          rows="4"
+                                          placeholder="Jelaskan tindak lanjut yang dilakukan..."
+                                          disabled="@followUpDisabled"></textarea>
+                                <span asp-validation-for="FollowUpDescription" class="text-danger"></span>
+                            </div>
+
+                            @* Photo Upload — temp uploads post keys after the upload API succeeds *@
+                            <div class="col-12">
+                                <label class="form-label fw-semibold  ">
+                                    Upload Foto <span class=" fw-normal">(Opsional)</span>
+                                </label>
+                                <input id="followUpPhotoInput"
+                                       type="file"
+                                       class="form-control"
+                                       accept=".jpg,.jpeg,.png"
+                                       multiple
+                                       disabled="@followUpDisabled" />
+                                <div id="followUpPhotoStatus" class="form-text  mt-1"></div>
+                                <div id="followUpPhotoHiddenFields"></div>
+                                <div id="followUpPhotoPreviewList" class="mt-2 row g-2"></div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="col-12 col-lg-4">
-                        <label class="form-label fw-semibold">Type</label>
-                        <input type="text" class="form-control" value="@Model.ReportType" readonly />
-                    </div>
-                    <div class="col-12 col-lg-4">
-                        <label class="form-label fw-semibold">Date</label>
-                        <input type="text" class="form-control" value="@Model.ReportDateText" readonly />
-                    </div>
-                    <div class="col-12 col-lg-4">
-                        <label class="form-label fw-semibold">Reported By</label>
-                        <input type="text" class="form-control" value="@Model.ReportedBy" readonly />
-                    </div>
-                    <div class="col-12 col-lg-4">
-                        <label class="form-label fw-semibold">Area</label>
-                        <input type="text" class="form-control" value="@Model.ReportArea" readonly />
-                    </div>
-                    <div class="col-12 col-lg-4">
-                        <label class="form-label fw-semibold">Status</label>
-                        <select asp-for="SelectedStatus" class="form-select">
-                            <option value="">Select status</option>
-                            <option value="Open">Open</option>
-                            <option value="On Progress">On Progress</option>
-                            <option value="Close">Close</option>
-                            <option value="Done">Done</option>
-                        </select>
-                        <span asp-validation-for="SelectedStatus" class="text-danger"></span>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label fw-semibold">Description</label>
-                        <textarea class="form-control" rows="4" readonly>@Model.ReportDescription</textarea>
-                    </div>
-@*                     @if (Model.Attachments.Count > 0)
+
+                    @if (Model.FollowUpPhotos.Any())
+                    {
+                        <div class="col-12 col-lg-4">
+                            <label class="form-label fw-semibold">
+                                Foto Follow-up
+                            </label>
+                            @if (Model.FollowUpPhotos.Count > 1)
+                            {
+                                <select id="followUpExistingPhotoSelect" class="form-select form-select-sm mb-2">
+                                    @for (var i = 0; i < Model.FollowUpPhotos.Count; i++)
+                                    {
+                                        <option value="@Model.FollowUpPhotos[i].FilePath"
+                                                data-attachment-id="@Model.FollowUpPhotos[i].AttachmentId">
+                                            Photo @(i + 1) of @Model.FollowUpPhotos.Count
+                                        </option>
+                                    }
+                                </select>
+                            }
+                            <div class="border rounded bg-light d-flex align-items-center justify-content-center overflow-hidden"
+                                 style="aspect-ratio:4/3;">
+                                <img id="followUpExistingPhotoImg"
+                                     src="@Model.FollowUpPhotos.First().FilePath"
+                                     alt="Follow-up photo"
+                                     class="img-fluid w-100 h-100 object-fit-contain"
+                                     style="cursor:pointer;"
+                                     data-bs-toggle="modal" data-bs-target="#photoModal"
+                                     data-photo-src="@Model.FollowUpPhotos.First().FilePath"
+                                     data-attachment-id="@Model.FollowUpPhotos.First().AttachmentId" />
+                            </div>
+                            @if (!Model.IsReportClosed)
+                            {
+                                <button type="button"
+                                        id="removeFollowUpPhotoButton"
+                                        class="btn btn-outline-danger btn-sm mt-2"
+                                        data-attachment-id="@Model.FollowUpPhotos.First().AttachmentId">
+                                    <i class="bi bi-trash me-1"></i>Remove Photo
+                                </button>
+                            }
+                        </div>
+                    }
+
+                    @if (Model.FollowUpAttachments.Any(a => !Model.FollowUpPhotos.Any(p => p.AttachmentId == a.AttachmentId)))
                     {
                         <div class="col-12">
-                            <label class="form-label fw-semibold">Attachments</label>
-                            <div class="list-group">
-                                @foreach (var attachment in Model.Attachments)
+                            <label class="form-label fw-semibold">
+                                <i class="bi bi-paperclip me-1"></i>Follow-up Attachments
+                            </label>
+                            <div class="d-flex flex-wrap gap-2">
+                                @foreach (var att in Model.FollowUpAttachments.Where(a => !Model.FollowUpPhotos.Any(p => p.AttachmentId == a.AttachmentId)))
                                 {
-                                    <a href="@attachment.FilePath" class="list-group-item list-group-item-action" target="_blank">
-                                        @attachment.FileName
-                                        <small class="text-muted d-block">@attachment.UploadDateText</small>
+                                    <a href="@att.FilePath" target="_blank"
+                                       class="badge bg-light text-dark border text-decoration-none">
+                                        <i class="bi bi-paperclip me-1"></i>@att.FileName
                                     </a>
                                 }
                             </div>
                         </div>
-                    } *@
+                    }
+
                 </div>
+            </div>
+
+            @* Action Buttons *@
+            <div class="card-footer bg-white border-top d-flex justify-content-end gap-2 py-3">
+                <button type="button" class="btn btn-warning text-dark"
+                        data-bs-toggle="modal" data-bs-target="#draftModal"
+                        disabled="@followUpDisabled">
+                    <i class="bi bi-floppy me-1"></i>Save Draft
+                </button>
+                <button type="button" class="btn btn-primary"
+                        data-bs-toggle="modal" data-bs-target="#saveModal"
+                        disabled="@followUpDisabled">
+                    <i class="bi bi-check-lg me-1"></i>Simpan
+                </button>
             </div>
         </div>
 
-        <div class="card border-0 shadow-sm">
-            <div class="card-body p-3 p-lg-4">
-                <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
-
-                <div class="row g-3">
-                    <div class="col-12 col-lg-6">
-                        <label asp-for="FollowUpName" class="form-label fw-semibold">Name</label>
-                        <input asp-for="FollowUpName" class="form-control" />
-                        <span asp-validation-for="FollowUpName" class="text-danger"></span>
-                    </div>
-
-                    <div class="col-12">
-                        <label asp-for="FollowUpDescription" class="form-label fw-semibold">Follow Up Description</label>
-                        <textarea asp-for="FollowUpDescription" class="form-control" rows="5"></textarea>
-                        <span asp-validation-for="FollowUpDescription" class="text-danger"></span>
-                    </div>
-
-                    <div class="col-12 col-lg-6">
-                        <label asp-for="FollowUpPhoto" class="form-label fw-semibold">Photo Upload (Optional)</label>
-                        <input asp-for="FollowUpPhoto" type="file" class="form-control" accept="image/*" />
-                    </div>
-
-                    <div class="col-12 d-grid d-md-flex justify-content-md-end">
-                        <button type="submit" class="btn btn-primary">Save</button>
-                    </div>
-                </div>
-            </div>
-        </div>
     </form>
+</div>
+
+@* ═══ MODAL: Photo Lightbox ═══ *@
+<div class="modal fade" id="photoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0">
+            <div class="modal-header border-0 pb-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center pt-0">
+                <img id="photoModalImg" src="#" alt="Photo" class="img-fluid rounded" />
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ═══ MODAL: Save Confirmation ═══ *@
+<div class="modal fade" id="saveModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <i id="saveModalIcon" class="bi bi-check-circle-fill text-primary fs-5"></i>
+                    <h6 id="saveModalTitle" class="modal-title fw-bold mb-0">Konfirmasi Simpan</h6>
+                </div>
+                <button id="saveModalCloseButton" type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div id="saveModalBody" class="modal-body " style="font-size:.92rem;">
+                Apakah Anda yakin ingin <strong class="text-dark">menyimpan</strong> data follow up ini?
+                Laporan akan diperbarui sesuai dengan data yang diisi.
+            </div>
+            <div id="saveModalFooter" class="modal-footer border-top">
+                <button id="saveModalCancelButton" type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                <button id="saveModalSubmitButton" type="button" class="btn btn-primary" onclick="submitForm()">
+                    <i class="bi bi-check-lg me-1"></i>Ya, Simpan
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* ═══ MODAL: Draft Confirmation ═══ *@
+<div class="modal fade" id="draftModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-floppy-fill text-warning fs-5"></i>
+                    <h6 class="modal-title fw-bold mb-0">Simpan sebagai Draft</h6>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body " style="font-size:.92rem;">
+                Status laporan akan diubah menjadi <strong class="text-warning">On Progress</strong>.
+                Apakah Anda ingin melanjutkan?
+            </div>
+            <div class="modal-footer border-top">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-warning text-dark" onclick="submitDraft()">
+                    <i class="bi bi-floppy me-1"></i>Ya, Simpan Draft
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script>
+        function submitDraft() {
+            if (window.followUpUploadState?.activeUploadCount > 0) {
+                window.followUpUploadState.setStatus("Please wait until the photo upload finishes before submitting.", "danger");
+                return;
+            }
+
+            document.getElementById('draftStatusInput').value = 'on progress';
+            submitFollowUpForm();
+        }
+
+        function submitForm() {
+            if (window.followUpUploadState?.activeUploadCount > 0) {
+                window.followUpUploadState.setStatus("Please wait until the photo upload finishes before submitting.", "danger");
+                return;
+            }
+
+            document.getElementById('draftStatusInput').value = '';
+            submitFollowUpForm();
+        }
+
+        async function submitFollowUpForm() {
+            const form = document.getElementById('reportForm');
+            const submitButton = document.getElementById('saveModalSubmitButton');
+            const draftButton = document.querySelector('#draftModal .btn-warning');
+
+            submitButton.disabled = true;
+            if (draftButton) draftButton.disabled = true;
+
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: new FormData(form),
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+
+                const contentType = response.headers.get('content-type') || '';
+                if (response.ok && contentType.includes('application/json')) {
+                    const result = await response.json();
+
+                    if (result.success) {
+                        showSuccessModal(result.message || 'Follow-up saved successfully.', result.redirectUrl);
+                        return;
+                    }
+                }
+
+                const html = await response.text();
+                document.open();
+                document.write(html);
+                document.close();
+            } catch {
+                document.getElementById('reportForm').submit();
+            } finally {
+                submitButton.disabled = false;
+                if (draftButton) draftButton.disabled = false;
+            }
+        }
+
+        function showSuccessModal(message, redirectUrl) {
+            const draftModalEl = document.getElementById('draftModal');
+            const draftModal = bootstrap.Modal.getInstance(draftModalEl);
+            if (draftModal) {
+                draftModal.hide();
+            }
+
+            document.getElementById('saveModalIcon').className = 'bi bi-check-circle-fill text-success fs-5';
+            document.getElementById('saveModalTitle').textContent = 'Berhasil Disimpan';
+            document.getElementById('saveModalBody').innerHTML = `<strong class="text-dark">${message}</strong>`;
+            document.getElementById('saveModalCancelButton').classList.add('d-none');
+            document.getElementById('saveModalCloseButton').classList.add('d-none');
+            document.getElementById('saveModalSubmitButton').className = 'btn btn-success';
+            document.getElementById('saveModalSubmitButton').innerHTML = '<i class="bi bi-arrow-right me-1"></i>Ke Report List';
+            document.getElementById('saveModalSubmitButton').onclick = () => {
+                window.location.href = redirectUrl;
+            };
+
+            const saveModalEl = document.getElementById('saveModal');
+            const saveModal = bootstrap.Modal.getOrCreateInstance(saveModalEl, {
+                backdrop: 'static',
+                keyboard: false
+            });
+
+            saveModal.show();
+            window.setTimeout(() => {
+                window.location.href = redirectUrl;
+            }, 1200);
+        }
+
+        function wirePhotoSelect(selectId, imageId) {
+            const select = document.getElementById(selectId);
+            const image = document.getElementById(imageId);
+
+            if (!select || !image) {
+                return;
+            }
+
+            select.addEventListener('change', function () {
+                image.src = this.value;
+                image.dataset.photoSrc = this.value;
+            });
+        }
+
+        wirePhotoSelect('reportPhotoSelect', 'reportPhotoImg');
+        wirePhotoSelect('beforePhotoSelect', 'beforePhotoImg');
+        wirePhotoSelect('afterPhotoSelect', 'afterPhotoImg');
+        wirePhotoSelect('followUpExistingPhotoSelect', 'followUpExistingPhotoImg');
+
+        const followUpExistingPhotoSelect = document.getElementById('followUpExistingPhotoSelect');
+        const followUpExistingPhotoImg = document.getElementById('followUpExistingPhotoImg');
+        const removeFollowUpPhotoButton = document.getElementById('removeFollowUpPhotoButton');
+
+        if (followUpExistingPhotoSelect && followUpExistingPhotoImg) {
+            followUpExistingPhotoSelect.addEventListener('change', function () {
+                const selectedOption = this.options[this.selectedIndex];
+                const attachmentId = selectedOption?.dataset?.attachmentId || '';
+
+                followUpExistingPhotoImg.dataset.attachmentId = attachmentId;
+                if (removeFollowUpPhotoButton) {
+                    removeFollowUpPhotoButton.dataset.attachmentId = attachmentId;
+                }
+            });
+        }
+
+        if (removeFollowUpPhotoButton) {
+            removeFollowUpPhotoButton.addEventListener('click', async function () {
+                const attachmentId = this.dataset.attachmentId;
+                if (!attachmentId) return;
+
+                this.disabled = true;
+
+                const form = document.getElementById('reportForm');
+                const fd = new FormData();
+                fd.append('reportId', document.querySelector('[name="reportId"]').value);
+                fd.append('attachmentId', attachmentId);
+
+                const token = form.querySelector('input[name="__RequestVerificationToken"]');
+                if (token) {
+                    fd.append('__RequestVerificationToken', token.value);
+                }
+
+                try {
+                    const response = await fetch(`${window.location.pathname}?handler=DeleteFollowUpAttachment`, {
+                        method: 'POST',
+                        body: fd,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+
+                    const responseText = await response.text();
+                    let data = {};
+                    if (responseText) {
+                        try {
+                            data = JSON.parse(responseText);
+                        } catch {
+                            data = {};
+                        }
+                    }
+
+                    if (response.ok && data.success) {
+                        window.location.reload();
+                        return;
+                    }
+
+                    window.followUpUploadState?.setStatus(data.message || 'Could not remove the photo.', 'danger');
+                } catch {
+                    window.followUpUploadState?.setStatus('Could not remove the photo.', 'danger');
+                } finally {
+                    this.disabled = false;
+                }
+            });
+        }
+
+        document.getElementById('photoModal').addEventListener('show.bs.modal', function (e) {
+            const src = e.relatedTarget?.dataset?.photoSrc;
+            if (src) document.getElementById('photoModalImg').src = src;
+        });
+
+        (() => {
+            let uploadedPhotos = [];
+
+            const input = document.getElementById('followUpPhotoInput');
+            const status = document.getElementById('followUpPhotoStatus');
+            const previewList = document.getElementById('followUpPhotoPreviewList');
+            const hiddenFields = document.getElementById('followUpPhotoHiddenFields');
+
+            window.followUpUploadState = {
+                activeUploadCount: 0,
+                setStatus
+            };
+
+            function setStatus(message, type = 'muted') {
+                status.textContent = message;
+                status.className = `form-text text-${type} mt-1`;
+            }
+
+            function updateStatus() {
+                if (window.followUpUploadState.activeUploadCount > 0) {
+                    const count = window.followUpUploadState.activeUploadCount;
+                    const suffix = count === 1 ? '' : 's';
+                    setStatus(`Uploading ${count} photo${suffix}...`);
+                    return;
+                }
+
+                if (uploadedPhotos.length === 0) {
+                    setStatus('');
+                    return;
+                }
+
+                const suffix = uploadedPhotos.length === 1 ? '' : 's';
+                setStatus(`${uploadedPhotos.length} photo${suffix} ready.`, 'success');
+            }
+
+            function syncHiddenFields() {
+                hiddenFields.innerHTML = '';
+
+                uploadedPhotos.forEach((photo) => {
+                    const keyInput = document.createElement('input');
+                    keyInput.type = 'hidden';
+                    keyInput.name = 'FollowUpPhotoTempKeys';
+                    keyInput.value = photo.tempKey;
+
+                    const tokenInput = document.createElement('input');
+                    tokenInput.type = 'hidden';
+                    tokenInput.name = 'FollowUpPhotoUploadOwnerTokens';
+                    tokenInput.value = photo.uploadOwnerToken;
+
+                    hiddenFields.appendChild(keyInput);
+                    hiddenFields.appendChild(tokenInput);
+                });
+            }
+
+            function renderPhotoPreviews() {
+                previewList.innerHTML = '';
+
+                uploadedPhotos.forEach((photo) => {
+                    const item = document.createElement('div');
+                    item.className = 'col-6 col-md-4';
+                    item.innerHTML = `
+                        <div class="position-relative border rounded p-2 h-100">
+                            <img src="${photo.previewUrl}" alt="Preview"
+                                 class="img-fluid rounded"
+                                 style="max-height:160px; width:100%; object-fit:contain;" />
+                            <button type="button"
+                                    class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1"
+                                    data-temp-key="${photo.tempKey}"
+                                    title="Remove photo">
+                                x
+                            </button>
+                        </div>`;
+                    previewList.appendChild(item);
+                });
+            }
+
+            async function readJsonSafe(response) {
+                const text = await response.text();
+                if (!text) return {};
+
+                try {
+                    return JSON.parse(text);
+                } catch {
+                    return {};
+                }
+            }
+
+            async function deleteTempKey(photo) {
+                if (!photo?.tempKey || !photo?.uploadOwnerToken) return;
+
+                try {
+                    await fetch('/api/upload/temp', {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            tempKey: photo.tempKey,
+                            uploadOwnerToken: photo.uploadOwnerToken
+                        })
+                    });
+                } catch {
+                }
+            }
+
+            input.addEventListener('change', async function () {
+                const files = Array.from(this.files || []);
+                if (files.length === 0) return;
+
+                input.disabled = true;
+                window.followUpUploadState.activeUploadCount += files.length;
+                updateStatus();
+
+                for (const file of files) {
+                    const fd = new FormData();
+                    fd.append('file', file);
+
+                    try {
+                        const res = await fetch('/api/upload/temp', { method: 'POST', body: fd });
+                        const data = await readJsonSafe(res);
+
+                        if (!res.ok) {
+                            setStatus(data.error || data.message || `Upload failed for ${file.name}.`, 'danger');
+                            continue;
+                        }
+
+                        uploadedPhotos.push({
+                            tempKey: data.tempKey,
+                            uploadOwnerToken: data.uploadOwnerToken,
+                            previewUrl: data.previewUrl
+                        });
+                        syncHiddenFields();
+                        renderPhotoPreviews();
+                    } catch {
+                        setStatus(`Upload error for ${file.name}. Please try again.`, 'danger');
+                    } finally {
+                        window.followUpUploadState.activeUploadCount -= 1;
+                        updateStatus();
+                    }
+                }
+
+                input.value = '';
+                input.disabled = false;
+            });
+
+            previewList.addEventListener('click', async function (e) {
+                const removeButton = e.target.closest('button[data-temp-key]');
+                if (!removeButton) return;
+
+                const tempKey = removeButton.dataset.tempKey;
+                const photo = uploadedPhotos.find(x => x.tempKey === tempKey);
+                if (!photo) return;
+
+                removeButton.disabled = true;
+                await deleteTempKey(photo);
+                uploadedPhotos = uploadedPhotos.filter(x => x.tempKey !== tempKey);
+                syncHiddenFields();
+                renderPhotoPreviews();
+                updateStatus();
+            });
+        })();
+    </script>
 }

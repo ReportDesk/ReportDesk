@@ -103,6 +103,19 @@
                 color: var(--dark);
             }
 
+        .btn-home {
+            border-color: var(--dark);
+            color: var(--dark);
+            font-weight: 600;
+            border-radius: 8px;
+        }
+
+            .btn-home:hover, .btn-home:focus {
+                background-color: var(--dark);
+                border-color: var(--dark);
+                color: var(--white);
+            }
+
         /* ── Toggle password button ── */
         .btn-outline-secondary {
             border-color: #dee2e6;
@@ -320,6 +333,9 @@
 
 
                     <div class="footer-copy mt-3">
+                        <div class="d-grid mb-3">
+                            <a asp-page="/Index" class="btn btn-home">Back to Home</a>
+                        </div>
                         <span>Copyright ©<span id="year"></span> <b>Report Desk</b></span>
                     </div>
                 </div>

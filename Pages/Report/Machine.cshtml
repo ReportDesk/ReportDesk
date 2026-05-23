@@ -32,7 +32,7 @@
                         <div class="row g-3">
 
                             <div class="col-12 col-md-6">
-                                <Waktu class="form-label fw-semibold">Waktu</label>
+                                <label class="form-label fw-semibold">Waktu</label>
                                 <input type="text" class="form-control"
                                        value="@Model.CurrentTimeDisplay" readonly />
                             </div>
@@ -58,7 +58,11 @@
                                     <option value="">— Select machine —</option>
                                     @foreach (var machine in Model.Machines)
                                     {
-                                        <option value="@machine.MachineId">@machine.MachineName</option>
+                                        var machineLabel = string.IsNullOrWhiteSpace(machine.MachineArea)
+                                            ? machine.MachineName
+                                            : $"{machine.MachineName} - {machine.MachineArea}";
+
+                                        <option value="@machine.MachineId">@machineLabel</option>
                                     }
                                 </select>
                                 <span id="errMachine" class="text-danger small"></span>
@@ -75,20 +79,9 @@
                             <div class="col-12">
                                 <label class="form-label fw-semibold">Upload Foto (Optional)</label>
                                 <input id="photoInput" type="file" class="form-control"
-                                       accept=".jpg,.jpeg,.png" />
+                                       accept=".jpg,.jpeg,.png" multiple />
                                 <div id="photoStatus" class="form-text text-muted mt-1"></div>
-                                <div id="photoPreview" class="mt-2 d-none">
-                                    <div class="position-relative d-inline-block">
-                                        <img id="photoPreviewImg" src="" alt="Preview"
-                                             class="rounded border"
-                                             style="max-height:160px; max-width:100%;" />
-                                        <button type="button" id="photoRemoveBtn"
-                                                class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1"
-                                                title="Remove photo">
-                                            ✕
-                                        </button>
-                                    </div>
-                                </div>
+                                <div id="photoPreviewList" class="mt-2 row g-2"></div>
                             </div>
 
                             <div class="col-12 d-grid">
@@ -111,14 +104,13 @@
     <script>
         (() => {
             // ── state ────────────────────────────────────────────────────────
-            let photoTempKey = null;
+            let uploadedPhotos = [];
+            let activeUploadCount = 0;
 
             // ── element refs ─────────────────────────────────────────────────
             const photoInput      = document.getElementById("photoInput");
             const photoStatus     = document.getElementById("photoStatus");
-            const photoPreview    = document.getElementById("photoPreview");
-            const photoPreviewImg = document.getElementById("photoPreviewImg");
-            const photoRemoveBtn  = document.getElementById("photoRemoveBtn");
+            const photoPreviewList = document.getElementById("photoPreviewList");
             const submitBtn       = document.getElementById("submitBtn");
             const formError       = document.getElementById("formError");
 
@@ -128,12 +120,46 @@
                 photoStatus.className = `form-text text-${type} mt-1`;
             }
 
-            function clearPhoto() {
-                photoTempKey = null;
+            function clearPendingSelection() {
                 photoInput.value = "";
-                photoPreview.classList.add("d-none");
-                photoPreviewImg.src = "";
-                setPhotoStatus("");
+            }
+
+            function updatePhotoStatus() {
+                if (activeUploadCount > 0) {
+                    const suffix = activeUploadCount === 1 ? "" : "s";
+                    setPhotoStatus(`Uploading ${activeUploadCount} photo${suffix}…`, "muted");
+                    return;
+                }
+
+                if (uploadedPhotos.length === 0) {
+                    setPhotoStatus("");
+                    return;
+                }
+
+                const suffix = uploadedPhotos.length === 1 ? "" : "s";
+                setPhotoStatus(`${uploadedPhotos.length} photo${suffix} ready.`, "success");
+            }
+
+            function renderPhotoPreviews() {
+                photoPreviewList.innerHTML = "";
+
+                uploadedPhotos.forEach((photo) => {
+                    const item = document.createElement("div");
+                    item.className = "col-6 col-md-4";
+                    item.innerHTML = `
+                        <div class="position-relative border rounded p-2 h-100">
+                            <img src="${photo.previewUrl}" alt="Preview"
+                                 class="img-fluid rounded"
+                                 style="max-height:160px; width:100%; object-fit:cover;" />
+                            <button type="button"
+                                    class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1"
+                                    data-temp-key="${photo.tempKey}"
+                                    title="Remove photo">
+                                ✕
+                            </button>
+                        </div>`;
+                    photoPreviewList.appendChild(item);
+                });
             }
 
             function setFieldError(spanId, msg) {
@@ -153,6 +179,22 @@
                 formError.classList.remove("d-none");
             }
 
+            function setSubmitState(disabled, text = "Submit") {
+                submitBtn.disabled = disabled;
+                submitBtn.textContent = text;
+            }
+
+            async function readJsonSafe(response) {
+                const text = await response.text();
+                if (!text) return {};
+
+                try {
+                    return JSON.parse(text);
+                } catch {
+                    return {};
+                }
+            }
+
             // ── client-side validation ───────────────────────────────────────
             function validate() {
                 clearErrors();
@@ -165,65 +207,86 @@
                 if (!name)        { setFieldError("errName",        "Name is required.");        valid = false; }
                 if (!machineId)   { setFieldError("errMachine",     "Please select a machine."); valid = false; }
                 if (!description) { setFieldError("errDescription", "Description is required."); valid = false; }
+                if (activeUploadCount > 0) {
+                    showFormError("Please wait until the photo upload finishes before submitting.");
+                    valid = false;
+                }
 
                 return valid;
             }
 
             // ── upload on file select ────────────────────────────────────────
             photoInput.addEventListener("change", async function () {
-                const file = this.files[0];
-                if (!file) return;
+                const files = Array.from(this.files || []);
+                if (files.length === 0) return;
 
-                // If user swaps file while a previous temp exists, remove the old one
-                if (photoTempKey) {
-                    await deleteTempKey(photoTempKey);
-                    photoTempKey = null;
-                }
-
-                setPhotoStatus("Uploading…", "muted");
+                clearErrors();
                 photoInput.disabled = true;
+                activeUploadCount += files.length;
+                updatePhotoStatus();
+                setSubmitState(true, "Uploading photo…");
 
-                try {
+                for (const file of files) {
                     const fd = new FormData();
                     fd.append("file", file);
 
-                    const res  = await fetch("/api/upload/temp", { method: "POST", body: fd });
-                    const data = await res.json();
+                    try {
+                        const res = await fetch("/api/upload/temp", { method: "POST", body: fd });
+                        const data = await readJsonSafe(res);
 
-                    if (!res.ok) {
-                        setPhotoStatus(data.error || "Upload failed.", "danger");
-                        photoInput.disabled = false;
-                        photoInput.value = "";
-                        return;
+                        if (!res.ok) {
+                            const message = data.error || data.message || `Upload failed for ${file.name}.`;
+                            setPhotoStatus(message, "danger");
+                            continue;
+                        }
+
+                        uploadedPhotos.push({
+                            tempKey: data.tempKey,
+                            uploadOwnerToken: data.uploadOwnerToken,
+                            previewUrl: data.previewUrl
+                        });
+                        renderPhotoPreviews();
+                    } catch {
+                        setPhotoStatus(`Upload error for ${file.name}. Please try again.`, "danger");
+                    } finally {
+                        activeUploadCount -= 1;
+                        updatePhotoStatus();
                     }
-
-                    photoTempKey = data.tempKey;
-                    photoPreviewImg.src = data.previewUrl;
-                    photoPreview.classList.remove("d-none");
-                    setPhotoStatus("Photo ready.", "success");
-                } catch {
-                    setPhotoStatus("Upload error. Please try again.", "danger");
-                } finally {
-                    photoInput.disabled = false;
                 }
+
+                clearPendingSelection();
+                photoInput.disabled = false;
+                setSubmitState(false, "Submit");
             });
 
             // ── remove photo ─────────────────────────────────────────────────
-            photoRemoveBtn.addEventListener("click", async function () {
-                if (!photoTempKey) { clearPhoto(); return; }
-                this.disabled = true;
-                await deleteTempKey(photoTempKey);
-                clearPhoto();
-                this.disabled = false;
+            photoPreviewList.addEventListener("click", async function (e) {
+                const removeButton = e.target.closest("button[data-temp-key]");
+                if (!removeButton) return;
+
+                const tempKey = removeButton.dataset.tempKey;
+                const photo = uploadedPhotos.find(x => x.tempKey === tempKey);
+                if (!photo) return;
+
+                removeButton.disabled = true;
+                await deleteTempKey(photo);
+                uploadedPhotos = uploadedPhotos.filter(x => x.tempKey !== tempKey);
+                renderPhotoPreviews();
+                updatePhotoStatus();
             });
 
             // ── delete helper ────────────────────────────────────────────────
-            async function deleteTempKey(key) {
+            async function deleteTempKey(photo) {
+                if (!photo?.tempKey || !photo?.uploadOwnerToken) return;
+
                 try {
                     await fetch("/api/upload/temp", {
                         method: "DELETE",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ tempKey: key })
+                        body: JSON.stringify({
+                            tempKey: photo.tempKey,
+                            uploadOwnerToken: photo.uploadOwnerToken
+                        })
                     });
                 } catch {
                     // Best-effort; TempFileCleanupService handles stragglers
@@ -236,29 +299,36 @@
 
                 if (!validate()) return;
 
-                submitBtn.disabled = true;
-                submitBtn.textContent = "Submitting…";
+                setSubmitState(true, "Submitting…");
 
                 const fd = new FormData(this);
                 fd.append("ReportType", "Machine");
 
-                if (photoTempKey) fd.append("photoTempKey", photoTempKey);
+                for (const photo of uploadedPhotos) {
+                    fd.append("photoTempKeys", photo.tempKey);
+                    fd.append("photoUploadOwnerTokens", photo.uploadOwnerToken);
+                }
 
                 try {
-                    const res  = await fetch("/api/report/submit", { method: "POST", body: fd });
-                    const data = await res.json();
+                    const res = await fetch("/api/report/submit", { method: "POST", body: fd });
+                    const data = await readJsonSafe(res);
 
                     if (res.ok) {
-                        window.location.href = "/Success";
+                        if (data.reportId) {
+                            window.location.href = `/Success?reportId=${encodeURIComponent(data.reportId)}`;
+                            return;
+                        }
+
+                        showFormError("Report submitted, but the submitted report data could not be loaded.");
+                        setSubmitState(false, "Submit");
                     } else {
-                        showFormError(data.message || "Submission failed. Please check your inputs.");
-                        submitBtn.disabled = false;
-                        submitBtn.textContent = "Submit";
+                        const message = data.message || data.error || "Submission failed. Please check your inputs.";
+                        showFormError(message);
+                        setSubmitState(false, "Submit");
                     }
                 } catch {
                     showFormError("An unexpected error occurred. Please try again.");
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = "Submit";
+                    setSubmitState(false, "Submit");
                 }
             });
         })();

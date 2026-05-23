@@ -55,8 +55,8 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddSingleton<IAmazonS3>(_ =>
 {
     var accountId = builder.Configuration["R2:AccountId"]!;
-    var accessKey = builder.Configuration["R2:AccessKey"]!;
-    var secretKey = builder.Configuration["R2:SecretKey"]!;
+    var accessKey = builder.Configuration["R2:AccessKeyId"]!;
+    var secretKey = builder.Configuration["R2:SecretAccessKey"]!;
 
     var credentials = new BasicAWSCredentials(accessKey, secretKey);
 
@@ -64,6 +64,8 @@ builder.Services.AddSingleton<IAmazonS3>(_ =>
     {
         ServiceURL = $"https://{accountId}.r2.cloudflarestorage.com",
         ForcePathStyle = true,   // Required for R2
+        AuthenticationRegion = "auto",
+
         RequestChecksumCalculation = RequestChecksumCalculation.WHEN_REQUIRED,
         ResponseChecksumValidation = ResponseChecksumValidation.WHEN_REQUIRED,
     };
@@ -79,6 +81,7 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IR2StorageService, R2StorageService>();
 builder.Services.AddScoped<IFileValidationService, FileValidationService>();
 builder.Services.AddScoped<IImageProcessingService, ImageProcessingService>();
+builder.Services.AddHostedService<TempFileCleanupService>();
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 

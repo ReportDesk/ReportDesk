@@ -31,12 +31,20 @@ namespace ReportSystem.Services
         {
             var key = $"temp/{userId}/{Guid.NewGuid():N}.webp";
 
+            if (!stream.CanSeek)
+                throw new InvalidOperationException("Upload stream must support seeking.");
+
+            stream.Position = 0;
+
             var request = new PutObjectRequest
             {
                 BucketName = _options.BucketName,
                 Key = key,
                 InputStream = stream,
+                AutoCloseStream = false,
                 ContentType = "image/webp",
+                UseChunkEncoding = false,
+                DisablePayloadSigning = true,
                 Metadata =
                 {
                     ["uploaded-at"] = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(),

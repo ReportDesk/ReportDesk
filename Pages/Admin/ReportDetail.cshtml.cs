@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using ReportSystem.Helpers;
 using ReportSystem.Models;
 using ReportSystem.Services;
 using System.ComponentModel.DataAnnotations;
@@ -12,15 +14,23 @@ namespace ReportSystem.Pages.Admin
     {
         private readonly AppDbContext _db;
         private readonly IR2StorageService _r2;
+        private readonly IDataProtectionProvider _dataProtectionProvider;
 
-        public ReportDetailModel(AppDbContext db, IR2StorageService r2)
+        public ReportDetailModel(AppDbContext db, IR2StorageService r2, IDataProtectionProvider dataProtectionProvider)
         {
             _db = db;
             _r2 = r2;
+            _dataProtectionProvider = dataProtectionProvider;
         }
 
         [BindProperty(SupportsGet = true)]
         public int reportId { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public string reportType { get; set; } = string.Empty;
+
+        [BindProperty(SupportsGet = true)]
+        public string detailId { get; set; } = string.Empty;
 
         public string ReportType { get; private set; } = string.Empty;
         public string ReportedBy { get; private set; } = string.Empty;
@@ -75,17 +85,19 @@ namespace ReportSystem.Pages.Admin
 
         public async Task<IActionResult> OnGetAsync(CancellationToken cancellationToken)
         {
-            //var redirect = RedirectIfNotAdmin();
-            //if (redirect is not null)
-            //{
-            //    return redirect;
-            //}
+            var redirect = RedirectIfNotAuthorizedForReportType();
+            if (redirect is not null)
+                return redirect;
 
             return await LoadReportAsync(cancellationToken) ? Page() : NotFound();
         }
 
         public async Task<IActionResult> OnPostSaveFollowUpAsync(CancellationToken ct)
         {
+            var redirect = RedirectIfNotAuthorizedForReportType();
+            if (redirect is not null)
+                return redirect;
+
             if (!await LoadReportAsync(ct))
                 return NotFound();
 
@@ -237,6 +249,10 @@ namespace ReportSystem.Pages.Admin
 
         public async Task<IActionResult> OnPostDeleteFollowUpAttachmentAsync(int attachmentId, CancellationToken ct)
         {
+            var redirect = RedirectIfNotAuthorizedForReportType();
+            if (redirect is not null)
+                return redirect;
+
             if (!await LoadReportAsync(ct))
                 return NotFound();
 
@@ -279,14 +295,38 @@ namespace ReportSystem.Pages.Admin
 
         // ---- Helpers
 
+        private IActionResult? RedirectIfNotAuthorizedForReportType()
+        {
+            var userId = HttpContext.Session.GetString("UserId");
+            var role = HttpContext.Session.GetString("Role") ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(userId) || !int.TryParse(userId, out _))
+                return RedirectToPage("/Login");
+
+            if (string.Equals(role, "Admin", StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            var allowedReportType = GetReportTypeForRole(role);
+            if (allowedReportType != null && IsMatchingReportType(allowedReportType, reportType))
+                return null;
+
+            return RedirectToPage("/AccessDenied");
+        }
+
         private async Task<bool> LoadReportAsync(CancellationToken ct)
         {
+            if (!TryResolveReportId())
+                return false;
+
             var report = await _db.MasterReports
                 .AsNoTracking()
                 .Include(x => x.Machine)
                 .FirstOrDefaultAsync(x => x.ReportId== reportId, ct);
 
             if (report == null)
+                return false;
+
+            if (!IsMatchingReportType(report.ReportType, reportType))
                 return false;
 
             var activeFollowUp = await _db.MasterFollowUps
@@ -371,6 +411,47 @@ namespace ReportSystem.Pages.Admin
                 .ToList();
 
             return true;
+        }
+
+        private bool TryResolveReportId()
+        {
+            if (!ReportIdProtector.TryUnprotect(_dataProtectionProvider, detailId, out var resolvedReportId))
+                return false;
+
+            reportId = resolvedReportId;
+            return true;
+        }
+
+        private static bool IsMatchingReportType(string actualReportType, string routeReportType)
+        {
+            return string.Equals(
+                NormalizeReportType(actualReportType),
+                NormalizeReportType(routeReportType),
+                StringComparison.Ordinal);
+        }
+
+        private static string? GetReportTypeForRole(string role)
+        {
+            return role.Trim().ToLowerInvariant() switch
+            {
+                "machine" => "Machine",
+                "nearmiss" => "NearMiss",
+                "suggestion" => "Suggestion",
+                "kaizen" => "Kaizen",
+                _ => null
+            };
+        }
+
+        private static string NormalizeReportType(string reportType)
+        {
+            return reportType.Trim().ToLowerInvariant() switch
+            {
+                "machine" => "machine",
+                "nearmiss" => "nearmiss",
+                "suggestion" => "suggestion",
+                "kaizen" => "kaizen",
+                _ => string.Empty
+            };
         }
 
         private static bool IsClosedStatus(string? status)

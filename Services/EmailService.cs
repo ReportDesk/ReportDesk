@@ -1,4 +1,3 @@
-﻿using Microsoft.AspNetCore.Cors;
 using Microsoft.Extensions.Configuration;
 using MailKit.Net.Smtp;
 using MailKit.Security;
@@ -9,11 +8,11 @@ namespace ReportSystem.Services
     public interface IEmailService
     {
         Task SendForgotPasswordAsync(string toEmail, string resetLink);
-        Task SendReportNotificationAsync(string reportType, string toEmail, object reportData);
+        Task SendReportNotificationAsync(string reportType, string toEmail, object reportData, string? reportDetailUrl = null);
     }
+
     public class EmailService : IEmailService
     {
-        private readonly IConfiguration _config;
         private readonly string _host;
         private readonly int _port;
         private readonly string _username;
@@ -21,32 +20,20 @@ namespace ReportSystem.Services
         private readonly string _fromEmail;
         private readonly string _fromName;
 
-        // Report type contants
+        // Report type constants
         public const string MachineReport = "Machine";
         public const string NearmissReport = "Nearmiss";
         public const string Suggestion = "Suggestion";
         public const string KaizenReport = "Kaizen";
 
-        // Each report type has its own dedicated sender email
-        private readonly Dictionary<string, string> _reportSenderEmails;
-
         public EmailService(IConfiguration config)
         {
-            _config = config;
             _host = config["Email:Smtp:Host"]!;
             _port = int.Parse(config["Email:Smtp:Port"]!);
             _username = config["Email:Smtp:Username"]!;
             _password = config["Email:Smtp:Password"]!;
             _fromEmail = config["Email:From:Address"]!;
-            _fromName = config["Email:From:Name"];
-
-            _reportSenderEmails = new Dictionary<string, string>
-            {
-                { MachineReport, config["Email:ReportSenders:Machine"]! },
-                { NearmissReport, config["Email:ReportSenders:Nearmiss"]! },
-                { Suggestion, config["Email:ReportSenders:Suggestion"]! },
-                { KaizenReport, config["Email:ReportSenders:Kaizen"]! },
-            };
+            _fromName = config["Email:From:Name"] ?? "Report Desk";
         }
 
         public async Task SendForgotPasswordAsync(string toEmail, string resetLink)
@@ -62,22 +49,39 @@ namespace ReportSystem.Services
             await SendEmailAsync(_fromEmail, _fromName, toEmail, subject, body);
         }
 
-        public async Task SendReportNotificationAsync(string reportType, string toEmail, object reportData)
+        public async Task SendReportNotificationAsync(string reportType, string toEmail, object reportData, string? reportDetailUrl = null)
         {
-            if (!_reportSenderEmails.TryGetValue(reportType, out var senderEmails))
-                throw new ArgumentException($"Unkown report type: {reportType}");
+            var normalizedReportType = NormalizeReportType(reportType);
+            if (normalizedReportType == null)
+                throw new ArgumentException($"Unknown report type: {reportType}");
 
-            var subject = $"New Incoming Report: {reportType}";
+            var subject = $"New Incoming Report: {normalizedReportType}";
+            var detailLink = string.IsNullOrWhiteSpace(reportDetailUrl)
+                ? string.Empty
+                : $@"<p><a href='{reportDetailUrl}'>Open Report Detail</a></p>";
+
             var body = $@"
                 <h2>Incoming Report Notification</h2>
-                <p>A new <strong>{reportType}</strong> report has been submitted.</p>
-                <p><strong>Details:</strong></p>
-                <pre>{System.Text.Json.JsonSerializer.Serialize(reportData, new System.Text.Json.JsonSerializerOptions { WriteIndented = true })}</pre>
+                <p>A new <strong>{normalizedReportType}</strong> report has been submitted.</p>
+                {detailLink}
+
                 ";
 
-            await SendEmailAsync(senderEmails, reportType, toEmail, subject, body);
+            await SendEmailAsync(_fromEmail, _fromName, toEmail, subject, body);
         }
-        
+
+        private static string? NormalizeReportType(string reportType)
+        {
+            return reportType.Trim().ToLowerInvariant() switch
+            {
+                "machine" => MachineReport,
+                "nearmiss" => NearmissReport,
+                "suggestion" => Suggestion,
+                "kaizen" => KaizenReport,
+                _ => null
+            };
+        }
+
         private async Task SendEmailAsync(string fromAddress, string fromName, string toEmail, string subject, string htmlBody)
         {
             var email = new MimeMessage();
@@ -92,6 +96,5 @@ namespace ReportSystem.Services
             await client.SendAsync(email);
             await client.DisconnectAsync(true);
         }
-
     }
 }

@@ -1,4 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.EntityFrameworkCore;
+using ReportSystem.Helpers;
 using ReportSystem.Models;
 using ReportSystem.Services;
 
@@ -11,12 +14,21 @@ public sealed class ReportController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly IR2StorageService _r2;
+    private readonly IEmailService _emailService;
+    private readonly IDataProtectionProvider _dataProtectionProvider;
     private readonly ILogger<ReportController> _logger;
 
-    public ReportController(AppDbContext context, IR2StorageService r2, ILogger<ReportController> logger)
+    public ReportController(
+        AppDbContext context,
+        IR2StorageService r2,
+        IEmailService emailService,
+        IDataProtectionProvider dataProtectionProvider,
+        ILogger<ReportController> logger)
     {
         _context = context;
         _r2 = r2;
+        _emailService = emailService;
+        _dataProtectionProvider = dataProtectionProvider;
         _logger = logger;
     }
 
@@ -163,11 +175,109 @@ public sealed class ReportController : ControllerBase
             "Report {ReportId} ({Type}) submitted by {Name} with {Count} attachment(s)",
             report.ReportId, report.ReportType, form.Name, attachments.Count);
 
+        await SendReportNotificationsAsync(report, ct);
+
         return Ok(new
         {
             message = "Report submitted successfully.",
             reportId = report.ReportId
         });
+    }
+
+    private async Task SendReportNotificationsAsync(MasterReport report, CancellationToken ct)
+    {
+        try
+        {
+            var recipientRole = GetNotificationRole(report.ReportType);
+            if (recipientRole == null)
+                return;
+
+            var recipientQuery = _context.MasterUsers
+                .AsNoTracking()
+                .Where(user => user.IsActive == 1 && user.Role == recipientRole);
+
+            // To include Admin recipients later, customize the filter above, for example:
+            // .Where(user => user.IsActive == 1 && (user.Role == recipientRole || user.Role == "Admin"));
+
+            var recipientEmails = await recipientQuery
+                .Select(user => user.Email)
+                .Distinct()
+                .ToListAsync(ct);
+
+            var recipients = recipientEmails
+                .Where(email => !string.IsNullOrWhiteSpace(email))
+                .ToList();
+
+            var protectedReportId = ReportIdProtector.Protect(_dataProtectionProvider, report.ReportId);
+            var notificationData = await CreateReportNotificationDataAsync(report, protectedReportId, ct);
+            var reportDetailUrl = Url.Page(
+                "/Admin/ReportDetail",
+                pageHandler: null,
+                values: new { reportType = report.ReportType, detailId = protectedReportId },
+                protocol: Request.Scheme);
+
+            foreach (var email in recipients)
+            {
+                try
+                {
+                    await _emailService.SendReportNotificationAsync(report.ReportType, email, notificationData, reportDetailUrl);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(
+                        ex,
+                        "Failed to send report notification for report {ReportId} to {Email}",
+                        report.ReportId,
+                        email);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to process report notifications for report {ReportId}", report.ReportId);
+        }
+    }
+
+    private static string? GetNotificationRole(string reportType)
+    {
+        return reportType.Trim().ToLowerInvariant() switch
+        {
+            "machine" => "Machine",
+            "nearmiss" => "Nearmiss",
+            "suggestion" => "Suggestion",
+            "kaizen" => "Kaizen",
+            _ => null
+        };
+    }
+
+    private async Task<object> CreateReportNotificationDataAsync(
+        MasterReport report,
+        string protectedReportId,
+        CancellationToken ct)
+    {
+        var machineName = string.Empty;
+
+        if (report.MachineId.HasValue)
+        {
+            machineName = await _context.MasterMachines
+                .AsNoTracking()
+                .Where(machine => machine.MachineId == report.MachineId.Value)
+                .Select(machine => machine.MachineName)
+                .FirstOrDefaultAsync(ct) ?? string.Empty;
+        }
+
+        return new
+        {
+            ReportReference = protectedReportId,
+            report.ReportType,
+            ReportedBy = report.ReportedBy,
+            report.SubmissionDate,
+            report.Area,
+            report.About,
+            MachineName = machineName,
+            report.Description,
+            report.Description2
+        };
     }
 
     public class SubmitReportForm

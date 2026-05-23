@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
+using ReportSystem.Helpers;
 using ReportSystem.Models;
 
 namespace ReportSystem.Pages.Admin
@@ -9,8 +11,13 @@ namespace ReportSystem.Pages.Admin
     public class ReportListModel : PageModel
     {
         private readonly AppDbContext _db;
+        private readonly IDataProtectionProvider _dataProtectionProvider;
 
-        public ReportListModel(AppDbContext db) => _db = db;
+        public ReportListModel(AppDbContext db, IDataProtectionProvider dataProtectionProvider)
+        {
+            _db = db;
+            _dataProtectionProvider = dataProtectionProvider;
+        }
 
         [BindProperty(SupportsGet = true)] public string ReportType { get; set; } = string.Empty;
         [BindProperty(SupportsGet = true)] public string FromDate { get; set; } = string.Empty;
@@ -118,6 +125,7 @@ namespace ReportSystem.Pages.Admin
                     ReportRows = reports.Select(r => new ReportRow
                     {
                         ReportId = r.ReportId,
+                        ProtectedReportId = ReportIdProtector.Protect(_dataProtectionProvider, r.ReportId),
                         ReportType = r.ReportType,
                         ReportedBy = r.ReportedBy,
                         About = r.About,
@@ -157,6 +165,7 @@ namespace ReportSystem.Pages.Admin
         public class ReportRow
         {
             public int ReportId { get; set; }
+            public string ProtectedReportId { get; set; } = string.Empty;
             public string Title { get; set; } = string.Empty;
             public string ReportType { get; set; } = string.Empty;
             public string ReportedBy { get; set; } = string.Empty;

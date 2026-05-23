@@ -36,7 +36,7 @@ namespace ReportSystem.Pages.Admin
         public string PageTitle => ReportType switch
         {
             "Machine" => "Machine Report List",
-            "NearMiss" => "NearMiss Report List",
+            "Nearmiss" => "NearMiss Report List",
             "Suggestion" => "Suggestion",
             "Kaizen" => "Kaizen Report List",
             _ => "Report List"
@@ -48,6 +48,7 @@ namespace ReportSystem.Pages.Admin
         public async Task OnGetAsync()
         {
             var role = HttpContext.Session.GetString("Role") ?? string.Empty;
+            ReportType = CanonicalizeReportType(ReportType);
 
             var roleTypeMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
@@ -98,7 +99,14 @@ namespace ReportSystem.Pages.Admin
                         query = query.Where(r => r.SubmissionDate <= toDate.AddDays(1).AddTicks(-1));
 
                     if (Status.Count > 0)
-                        query = query.Where(r => Status.Contains(r.Status));
+                    {
+                        var normalizedStatuses = Status
+                            .Where(s => !string.IsNullOrWhiteSpace(s))
+                            .Select(s => s.Trim().ToLower())
+                            .ToList();
+
+                        query = query.Where(r => normalizedStatuses.Contains(r.Status.ToLower()));
+                    }
 
                     if (IsMachineType && MachineId.HasValue)
                         query = query.Where(r => r.MachineId == MachineId.Value);
@@ -132,6 +140,18 @@ namespace ReportSystem.Pages.Admin
                 {
                     LoadError = $"Error loading report: {ex.Message}";
                 }
+        }
+
+        private static string CanonicalizeReportType(string reportType)
+        {
+            return reportType?.Trim().ToLowerInvariant() switch
+            {
+                "machine" => "Machine",
+                "nearmiss" => "NearMiss",
+                "suggestion" => "Suggestion",
+                "kaizen" => "Kaizen",
+                _ => reportType ?? string.Empty
+            };
         }
 
         public class ReportRow

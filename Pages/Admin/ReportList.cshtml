@@ -2,8 +2,6 @@
 @model ReportSystem.Pages.Admin.ReportListModel
 @{
     ViewData["Title"] = Model.PageTitle;
-
-    int colCount = 6;
 }
 
 <style>
@@ -207,82 +205,69 @@
                     </thead>
 
                     <tbody>
-                        @if (Model.ReportRows.Count == 0)
+                        @foreach (var report in Model.ReportRows)
                         {
-                            <tr>
-                                <td colspan="@colCount"
-                                    class="text-center text-muted py-4">
-                                    <i class="bi bi-inbox me-2"></i>
-                                    No Report Found.
-                                </td>
-                            </tr>
-                        }
-                        else
-                        {
-                            foreach (var report in Model.ReportRows)
+                            var (pillClass, pillLabel) = report.Status?.ToLowerInvariant() switch
                             {
-                                var (pillClass, pillLabel) = report.Status?.ToLower() switch
-                                {
-                                    "open"
-                                    => ("bg-success-subtle text-success border border-success-subtle", "Open"),
+                                "open"
+                                => ("bg-success-subtle text-success border border-success-subtle", "open"),
 
-                                    "on progress" or "onprogress" or "on-progress"
-                                    => ("bg-warning-subtle text-warning border border-warning-subtle", "On Progress"),
+                                "on progress" or "onprogress" or "on-progress"
+                                => ("bg-warning-subtle text-warning border border-warning-subtle", "on progress"),
 
-                                    "close" or "closed"
-                                    => ("bg-danger-subtle text-danger border border-danger-subtle", "Close"),
+                                "close" or "closed"
+                                => ("bg-danger-subtle text-danger border border-danger-subtle", "close"),
 
-                                    _ => ("bg-secondary-subtle text-secondary border border-secondary-subtle",
-                                    report.Status ?? "—")
-                                };
+                                _ => ("bg-secondary-subtle text-secondary border border-secondary-subtle",
+                                report.Status ?? "—")
+                            };
 
-                                <tr>
+                            <tr>
 
-                                    <td>
-                                        <span class="badge rounded-pill fw-semibold px-3 py-2 @pillClass">
-                                            @pillLabel
-                                        </span>
-                                    </td>
+                                <td>
+                                    <span class="badge rounded-pill fw-semibold px-3 py-2 @pillClass">
+                                        @pillLabel
+                                    </span>
+                                </td>
 
-                                    <td class="text-nowrap">
-                                        @report.SubmissionDateText
-                                    </td>
+                                <td class="text-nowrap">
+                                    @report.SubmissionDateText
+                                </td>
 
-                                    <td>
-                                        <span class="d-inline-block text-truncate mobile-truncate"
-                                              style="max-width:200px"
-                                              title="@report.ContextValue">
-                                            @report.ContextValue
-                                        </span>
-                                    </td>
+                                <td>
+                                    <span class="d-inline-block text-truncate mobile-truncate"
+                                          style="max-width:200px"
+                                          title="@report.ContextValue">
+                                        @report.ContextValue
+                                    </span>
+                                </td>
 
-                                    <td>
-                                        <span class="d-inline-block text-truncate mobile-truncate"
-                                              style="max-width:160px"
-                                              title="@report.ReportedBy">
-                                            @report.ReportedBy
-                                        </span>
-                                    </td>
+                                <td>
+                                    <span class="d-inline-block text-truncate mobile-truncate"
+                                          style="max-width:160px"
+                                          title="@report.ReportedBy">
+                                        @report.ReportedBy
+                                    </span>
+                                </td>
 
-                                    <td>
-                                        <span class="d-inline-block text-truncate text-muted small mobile-truncate"
-                                              style="max-width:260px"
-                                              title="@report.ShortDescription">
-                                            @report.ShortDescription
-                                        </span>
-                                    </td>
+                                <td>
+                                    <span class="d-inline-block text-truncate text-muted small mobile-truncate"
+                                          style="max-width:260px"
+                                          title="@report.ShortDescription">
+                                        @report.ShortDescription
+                                    </span>
+                                </td>
 
-                                    <td class="text-center">
-                                        <a asp-page="/Admin/ReportDetail"
-                                           asp-route-reportId="@report.ReportId"
-                                           class="btn btn-sm btn-outline-primary"
-                                           title="See detail">
-                                            <i class="bi bi-eye"></i>
-                                        </a>
-                                    </td>
+                                <td class="text-center">
+                                    <a asp-page="/Admin/ReportDetail"
+                                       asp-route-reportId="@report.ReportId"
+                                       class="btn btn-sm btn-outline-primary"
+                                       title="See detail">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                </td>
 
-                                </tr>
-                            }
+                            </tr>
                         }
                     </tbody>
                 </table>
@@ -304,7 +289,11 @@
                     { orderable: false, targets: 5 }
                 ],
                 responsive: true,
-                autoWidth: false
+                autoWidth: false,
+                language: {
+                    emptyTable: 'No Report Found.',
+                    zeroRecords: 'No Report Found.'
+                }
             });
 
         });

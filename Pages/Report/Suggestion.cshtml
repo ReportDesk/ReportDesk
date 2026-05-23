@@ -249,7 +249,13 @@
                     const data = await readJsonSafe(res);
 
                     if (res.ok) {
-                        window.location.href = "/Success";
+                        if (data.reportId) {
+                            window.location.href = `/Success?reportId=${encodeURIComponent(data.reportId)}`;
+                            return;
+                        }
+
+                        showFormError("Report submitted, but the submitted report data could not be loaded.");
+                        setSubmitState(false, "Submit");
                     } else {
                         const message = data.message || data.error || "Submission failed.";
                         showFormError(message);

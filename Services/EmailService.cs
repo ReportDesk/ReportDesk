@@ -1,8 +1,7 @@
 using Microsoft.Extensions.Configuration;
-using MailKit.Net.Smtp;
-using MailKit.Security;
-using MimeKit;
 using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
 
 namespace ReportSystem.Services
 {
@@ -25,10 +24,10 @@ namespace ReportSystem.Services
 
     public class EmailService : IEmailService
     {
-        private readonly string _host;
-        private readonly int _port;
-        private readonly string _username;
-        private readonly string _password;
+        private const string ResendEmailEndpoint = "https://api.resend.com/emails";
+
+        private readonly HttpClient _httpClient;
+        private readonly string _apiKey;
         private readonly string _fromEmail;
         private readonly string _fromName;
 
@@ -38,13 +37,11 @@ namespace ReportSystem.Services
         public const string Suggestion = "Suggestion";
         public const string KaizenReport = "Kaizen";
 
-        public EmailService(IConfiguration config)
+        public EmailService(HttpClient httpClient, IConfiguration config)
         {
-            _host = config["Email:Smtp:Host"]!;
-            _port = int.Parse(config["Email:Smtp:Port"]!);
-            _username = config["Email:Smtp:Username"]!;
-            _password = config["Email:Smtp:Password"]!;
-            _fromEmail = config["Email:From:Address"]!;
+            _httpClient = httpClient;
+            _apiKey = GetRequiredConfig(config, "Email:Resend:ApiKey");
+            _fromEmail = GetRequiredConfig(config, "Email:From:Address");
             _fromName = config["Email:From:Name"] ?? "Report Desk";
         }
 
@@ -149,17 +146,42 @@ namespace ReportSystem.Services
 
         private async Task SendEmailAsync(string fromAddress, string fromName, string toEmail, string subject, string htmlBody)
         {
-            var email = new MimeMessage();
-            email.From.Add(new MailboxAddress(fromName, fromAddress));
-            email.To.Add(MailboxAddress.Parse(toEmail));
-            email.Subject = subject;
-            email.Body = new BodyBuilder { HtmlBody = htmlBody }.ToMessageBody();
+            using var request = new HttpRequestMessage(HttpMethod.Post, ResendEmailEndpoint)
+            {
+                Content = JsonContent.Create(new
+                {
+                    from = FormatFromAddress(fromAddress, fromName),
+                    to = new[] { toEmail },
+                    subject,
+                    html = htmlBody
+                })
+            };
 
-            using var client = new SmtpClient();
-            await client.ConnectAsync(_host, _port, SecureSocketOptions.StartTls);
-            await client.AuthenticateAsync(_username, _password);
-            await client.SendAsync(email);
-            await client.DisconnectAsync(true);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+
+            using var response = await _httpClient.SendAsync(request);
+            if (response.IsSuccessStatusCode)
+                return;
+
+            var responseBody = await response.Content.ReadAsStringAsync();
+            throw new InvalidOperationException(
+                $"Resend email API failed with status {(int)response.StatusCode} ({response.ReasonPhrase}). Response: {responseBody}");
+        }
+
+        private static string FormatFromAddress(string fromAddress, string fromName)
+        {
+            return string.IsNullOrWhiteSpace(fromName)
+                ? fromAddress
+                : $"{fromName} <{fromAddress}>";
+        }
+
+        private static string GetRequiredConfig(IConfiguration config, string key)
+        {
+            var value = config[key];
+            if (string.IsNullOrWhiteSpace(value))
+                throw new InvalidOperationException($"Missing required configuration value: {key}");
+
+            return value;
         }
     }
 }

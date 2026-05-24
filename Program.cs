@@ -77,7 +77,7 @@ builder.Services.Configure<R2Options>(builder.Configuration.GetSection("R2"));
 
 builder.Services.AddScoped<IConfigurationService, ConfigurationService>();
 builder.Services.AddScoped<ReportSystem.Helpers.AppDbConnection>();
-builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddHttpClient<IEmailService, EmailService>();
 builder.Services.AddScoped<IR2StorageService, R2StorageService>();
 builder.Services.AddScoped<IFileValidationService, FileValidationService>();
 builder.Services.AddScoped<IImageProcessingService, ImageProcessingService>();

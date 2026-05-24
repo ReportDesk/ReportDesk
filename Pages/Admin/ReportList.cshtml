@@ -156,7 +156,7 @@
                                            name="Status"
                                            value="@s"
                                            id="@labelId"
-                                           @(Model.Status.Contains(s) ? "checked" : "") />
+                                           @(Model.IsStatusSelected(s) ? "checked" : "") />
 
                                     <label class="form-check-label small" for="@labelId">
                                         @labelText
@@ -177,6 +177,14 @@
                            class="btn btn-outline-secondary btn-sm px-3">
                             Reset
                         </a>
+
+                        <button type="button"
+                                class="btn btn-success btn-sm px-3"
+                                data-bs-toggle="modal"
+                                data-bs-target="#exportExcelModal">
+                            <i class="bi bi-file-earmark-excel me-1"></i>
+                            Export Excel
+                        </button>
                     </div>
 
                 </div>
@@ -279,6 +287,113 @@
 
 </div>
 
+<div class="modal fade" id="exportExcelModal" tabindex="-1" aria-labelledby="exportExcelModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <form method="get" asp-page="/Admin/ReportList" id="exportExcelForm">
+                <div class="modal-header border-bottom">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-file-earmark-excel text-success fs-5"></i>
+                        <h6 class="modal-title fw-bold mb-0" id="exportExcelModalLabel">Export Excel</h6>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body">
+                    <input type="hidden" name="handler" value="Export" />
+                    <input type="hidden" name="ReportType" value="@Model.ReportType" />
+
+                    <div class="row g-3">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold small mb-1" for="exportFromDate">
+                                From Date
+                            </label>
+                            <input id="exportFromDate"
+                                   name="FromDate"
+                                   value="@Model.FromDate"
+                                   type="date"
+                                   class="form-control form-control-sm" />
+                        </div>
+
+                        <div class="col-12 col-md-6">
+                            <label class="form-label fw-semibold small mb-1" for="exportToDate">
+                                To Date
+                            </label>
+                            <input id="exportToDate"
+                                   name="ToDate"
+                                   value="@Model.ToDate"
+                                   type="date"
+                                   class="form-control form-control-sm" />
+                        </div>
+
+                        @if (Model.IsMachineType)
+                        {
+                            <div class="col-12">
+                                <label class="form-label fw-semibold small mb-1" for="exportMachineId">
+                                    Machine
+                                </label>
+                                <select id="exportMachineId"
+                                        name="MachineId"
+                                        class="form-select form-select-sm">
+                                    <option value="">All Machines</option>
+                                    @foreach (var machine in Model.MachineOptions)
+                                    {
+                                        <option value="@machine.Value" selected="@(machine.Value == Model.MachineId?.ToString())">
+                                            @machine.Text
+                                        </option>
+                                    }
+                                </select>
+                            </div>
+                        }
+
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small mb-1 d-block">
+                                Status
+                            </label>
+
+                            <div class="d-flex flex-wrap align-items-center gap-3">
+                                @foreach (var s in new[] { "open", "on progress", "close" })
+                                {
+                                    var exportLabelId = "export_status_" + s.Replace(" ", "");
+                                    var labelText = s switch
+                                    {
+                                        "open" => "Open",
+                                        "on progress" => "On Progress",
+                                        "close" => "Close",
+                                        _ => s
+                                    };
+
+                                    <div class="form-check mb-0">
+                                        <input class="form-check-input"
+                                               type="checkbox"
+                                               name="Status"
+                                               value="@s"
+                                               id="@exportLabelId"
+                                               @(Model.IsStatusSelected(s) ? "checked" : "") />
+                                        <label class="form-check-label small" for="@exportLabelId">
+                                            @labelText
+                                        </label>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-top">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn btn-success btn-sm" id="exportExcelSubmitButton">
+                        <i class="bi bi-download me-1"></i>
+                        <span class="export-button-text">Export</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script>
         $(document).ready(function () {
@@ -296,6 +411,32 @@
                     zeroRecords: 'No Report Found.'
                 }
             });
+
+            const exportModal = document.getElementById('exportExcelModal');
+            const exportForm = document.getElementById('exportExcelForm');
+            const exportButton = document.getElementById('exportExcelSubmitButton');
+            const exportButtonText = exportButton?.querySelector('.export-button-text');
+
+            function resetExportButton() {
+                if (!exportButton || !exportButtonText) {
+                    return;
+                }
+
+                exportButton.disabled = false;
+                exportButtonText.textContent = 'Export';
+            }
+
+            if (exportForm && exportButton && exportButtonText) {
+                exportForm.addEventListener('submit', function () {
+                    exportButton.disabled = true;
+                    exportButtonText.textContent = 'Exporting...';
+                });
+            }
+
+            if (exportModal) {
+                exportModal.addEventListener('show.bs.modal', resetExportButton);
+                exportModal.addEventListener('hidden.bs.modal', resetExportButton);
+            }
 
         });
     </script>

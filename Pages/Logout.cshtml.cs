@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
@@ -5,9 +7,10 @@ namespace ReportSystem.Pages
 {
     public class LogoutModel : PageModel
     {
-        public IActionResult OnPost()
+        public async Task<IActionResult> OnPostAsync()
         {
             HttpContext.Session.Clear();
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
             return RedirectToPage("/Login");
         }

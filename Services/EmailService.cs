@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Configuration;
-using ReportSystem.Helpers;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -117,7 +116,7 @@ namespace ReportSystem.Services
                 rows.Add(BuildRow("Kondisi Berbahaya", reportData.Description));
             }
 
-            rows.Add(BuildRow("Submission Date", IndonesianTime.Format(reportData.SubmissionDate, "dd MMM yyyy, HH:mm")));
+                rows.Add(BuildRow("Submission Date", reportData.SubmissionDate.ToString("dd MMM yyyy, HH:mm")));
             return string.Join(Environment.NewLine, rows);
         }
 

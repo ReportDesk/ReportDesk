@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
-using ReportSystem.Helpers;
 using ReportSystem.Models;
 
 namespace ReportSystem.Pages
@@ -49,7 +48,7 @@ namespace ReportSystem.Pages
         private void MapReport(MasterReport report)
         {
             ReportedBy = report.ReportedBy;
-            SubmissionDateText = IndonesianTime.Format(report.SubmissionDate, "dd MMM yyyy, HH:mm");
+            SubmissionDateText = report.SubmissionDate.ToString("dd MMM yyyy, HH:mm");
             Description = report.Description;
 
             switch (report.ReportType?.Trim().ToLowerInvariant())

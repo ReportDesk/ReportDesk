@@ -79,7 +79,7 @@ namespace ReportSystem.Pages.Admin
                     About = r.About,
                     Area = r.Area,
                     MachineName = r.Machine?.MachineName ?? string.Empty,
-                    SubmissionDateText = r.SubmissionDate.ToString("dd MMM yyyy"),
+                    SubmissionDateText = IndonesianTime.Format(r.SubmissionDate, "dd MMM yyyy"),
                     Status = r.Status,
                     Title = r.Description ?? string.Empty,
                     ShortDescription = r.Description ?? string.Empty,
@@ -149,7 +149,7 @@ namespace ReportSystem.Pages.Admin
             using var stream = new MemoryStream();
             workbook.SaveAs(stream);
 
-            var fileName = $"{GetReportTypeFileName(ReportType)}_Report_Export_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+            var fileName = $"{GetReportTypeFileName(ReportType)}_Report_Export_{IndonesianTime.Now:yyyyMMdd_HHmmss}.xlsx";
             return File(stream.ToArray(), ExcelContentType, fileName);
         }
 
@@ -188,10 +188,16 @@ namespace ReportSystem.Pages.Admin
                 query = query.Where(r => r.ReportType == ReportType);
 
             if (DateTime.TryParse(FromDate, out var fromDate))
-                query = query.Where(r => r.SubmissionDate >= fromDate);
+            {
+                var fromUtc = IndonesianTime.LocalDateStartToUtc(fromDate);
+                query = query.Where(r => r.SubmissionDate >= fromUtc);
+            }
 
             if (DateTime.TryParse(ToDate, out var toDate))
-                query = query.Where(r => r.SubmissionDate <= toDate.AddDays(1).AddTicks(-1));
+            {
+                var toUtc = IndonesianTime.LocalDateEndToUtc(toDate);
+                query = query.Where(r => r.SubmissionDate <= toUtc);
+            }
 
             var normalizedStatuses = (Status ?? new List<string>())
                 .Where(s => !string.IsNullOrWhiteSpace(s))
@@ -440,7 +446,7 @@ namespace ReportSystem.Pages.Admin
 
         private static string FormatDate(DateTime date)
         {
-            return date.ToString("yyyy-MM-dd HH:mm");
+            return IndonesianTime.Format(date, "yyyy-MM-dd HH:mm");
         }
 
         private static string JoinLinks(IEnumerable<Attachment> attachments)

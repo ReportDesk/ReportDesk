@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ReportSystem.Helpers;
 using ReportSystem.Models;
 
 namespace ReportSystem.Controllers.API
@@ -68,7 +69,7 @@ namespace ReportSystem.Controllers.API
                 {
                     followUpId = f.FollowUpId,
                     responsiblePerson = f.ResponsiblePerson,
-                    followUpDateText = f.FollowUpDate.ToString("dd-MM-yyyy"),
+                    followUpDateText = IndonesianTime.Format(f.FollowUpDate, "dd-MM-yyyy"),
                     description = f.Description,
                     materialsUsed = f.MaterialsUsed,
                     attachments = attachments
@@ -88,10 +89,10 @@ namespace ReportSystem.Controllers.API
                     reportedBy = report.ReportedBy,
                     area = report.Area,
                     machineName = report.Machine != null ? report.Machine.MachineName : null,
-                    submissionDate = report.SubmissionDate.ToString("dd-MM-yyyy"),
+                    submissionDate = IndonesianTime.Format(report.SubmissionDate, "dd-MM-yyyy"),
                     description = report.Description,
                     status = report.Status,
-                    followUps
+                    followUps = followUpDtos
                 });
             }
             catch (Exception ex)
@@ -120,7 +121,7 @@ namespace ReportSystem.Controllers.API
             if (!allowedStatuses.Contains(form.status))
                 return BadRequest(new { message = "Invalid status value." });
 
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow;
             var actor = User?.Identity?.Name ?? "system";
 
             await using var tx = await _context.Database.BeginTransactionAsync();
@@ -212,7 +213,7 @@ namespace ReportSystem.Controllers.API
                     return NotFound(new { message = "Report not found." });
 
                 report.Status = form.status;
-                report.UpdatedDate = DateTime.Now;
+                report.UpdatedDate = DateTime.UtcNow;
                 report.UpdatedBy = GetCurrentUserId();
 
                 await _context.SaveChangesAsync();

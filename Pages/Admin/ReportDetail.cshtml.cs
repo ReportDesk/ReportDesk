@@ -151,7 +151,7 @@ namespace ReportSystem.Pages.Admin
                 return Page();
             }
 
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow;
             var userId = GetCurrentUserId();
 
             try
@@ -345,7 +345,7 @@ namespace ReportSystem.Pages.Admin
                 .ToListAsync(ct);
 
             // Map report fields
-            ReportDateText = report.SubmissionDate.ToString("yyyy-MM-dd HH:mm");
+            ReportDateText = IndonesianTime.Format(report.SubmissionDate, "yyyy-MM-dd HH:mm");
             ReportType = report.ReportType;
             ReportedBy = report.ReportedBy;
             ReportAbout = report.About;
@@ -384,7 +384,9 @@ namespace ReportSystem.Pages.Admin
                 .ToList();
 
             ActiveFollowUpId = activeFollowUp?.FollowUpId;
-            FollowUpDateText = activeFollowUp?.FollowUpDate.ToString("dd-MM-yyyy HH:mm") ?? string.Empty;
+            FollowUpDateText = activeFollowUp == null
+                ? string.Empty
+                : IndonesianTime.Format(activeFollowUp.FollowUpDate, "dd-MM-yyyy HH:mm");
 
             if (activeFollowUp != null && (!HttpContext.Request.HasFormContentType || IsReportClosed))
             {

@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using ReportSystem.Helpers;
 using ReportSystem.Models;
 using ReportSystem.Services;
 
@@ -30,7 +31,7 @@ namespace ReportSystem.Pages.Report
         public string? MachineLoadError { get; set; }
 
         // ── Bound data ────────────────────────────────────────────────────────
-        public string CurrentTimeDisplay => DateTime.Now.ToString("dd MMM yyyy, HH:mm");
+        public string CurrentTimeDisplay => IndonesianTime.Now.ToString("dd MMM yyyy, HH:mm");
         public List<MasterMachine> Machines { get; set; } = new();
 
         // ── GET ───────────────────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using ReportSystem.Helpers;
 using ReportSystem.Services;
 
 namespace ReportSystem.Pages.Report
@@ -20,7 +21,7 @@ namespace ReportSystem.Pages.Report
         [TempData]
         public string? SuccessMessage { get; set; }
 
-        public DateTime CurrentTimeDisplay = DateTime.Now;
+        public string CurrentTimeDisplay => IndonesianTime.Now.ToString("dd MMM yyyy, HH:mm");
     }
 
 }

@@ -19,7 +19,9 @@ namespace ReportSystem.Pages.Report
         [TempData]
         public string? SuccessMessage { get; set; }
 
-        public DateTime CurrentTimeDisplay = DateTime.Now;
+        public DateTime CurrentTimeDisplay =>
+            TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+                TimeZoneInfo.FindSystemTimeZoneById("Asia/Jakarta"));
     }
 
 }

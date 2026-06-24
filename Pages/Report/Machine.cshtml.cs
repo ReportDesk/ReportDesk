@@ -30,7 +30,9 @@ namespace ReportSystem.Pages.Report
         public string? MachineLoadError { get; set; }
 
         // ── Bound data ────────────────────────────────────────────────────────
-        public string CurrentTimeDisplay => DateTime.Now.ToString("dd MMM yyyy, HH:mm");
+        public DateTime CurrentTimeDisplay =>
+            TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow,
+                TimeZoneInfo.FindSystemTimeZoneById("Asia/Jakarta"));
         public List<MasterMachine> Machines { get; set; } = new();
 
         // ── GET ───────────────────────────────────────────────────────────────

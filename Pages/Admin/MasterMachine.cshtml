@@ -58,6 +58,7 @@
                                     <th>Machine Name</th>
                                     <th>Area</th>
                                     <th>Type</th>
+                                    <th>Status</th>
                                     <th>Action</th>
                                 </tr>
                             </thead>
@@ -76,6 +77,16 @@
                                             <td class="fw-semibold">@m.MachineName</td>
                                             <td>@m.Area</td>
                                             <td>@m.Type</td>
+                                            <td>
+                                                @if (m.IsActive)
+                                                {
+                                                    <span class="badge bg-success">Active</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-secondary">Inactive</span>
+                                                }
+                                            </td>
                                             <td style="white-space: nowrap;">
                                                 <button type="button" class="btn btn-warning btn-sm text-dark"
                                                         onclick="openEditModal(@m.MachineId)">
@@ -125,6 +136,11 @@
                         <input type="text" class="form-control" id="addType"
                                name="Input.Type" placeholder="e.g. Lathe" />
                     </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="addIsActive"
+                               name="Input.IsActive" value="true" checked />
+                        <label class="form-check-label fw-semibold" for="addIsActive">Active</label>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -161,6 +177,11 @@
                         <input type="text" class="form-control" id="editType"
                                name="Input.Type" />
                     </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="editIsActive"
+                               name="Input.IsActive" value="true" />
+                        <label class="form-check-label fw-semibold" for="editIsActive">Active</label>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -180,14 +201,14 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                Are you sure you want to delete <strong id="deleteMachineLabel"></strong>?
-                This cannot be undone.
+                Are you sure you want to deactivate <strong id="deleteMachineLabel"></strong>?
+                It will no longer appear in machine reports, but existing reports referencing it are preserved.
             </div>
             <form method="post" asp-page-handler="Delete" id="formDelete">
                 <input type="hidden" id="deleteMachineId" name="machineId" />
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-danger">Delete</button>
+                    <button type="submit" class="btn btn-danger">Deactivate</button>
                 </div>
             </form>
         </div>
@@ -226,6 +247,7 @@
             document.getElementById('addMachineName').value = '';
             document.getElementById('addArea').value        = '';
             document.getElementById('addType').value        = '';
+            document.getElementById('addIsActive').checked  = true;
         });
 
         // ── Edit ──────────────────────────────────────────────────
@@ -237,6 +259,7 @@
             document.getElementById('editMachineName').value = m.machineName;
             document.getElementById('editArea').value        = m.area;
             document.getElementById('editType').value        = m.type;
+            document.getElementById('editIsActive').checked  = m.isActive;
 
             new bootstrap.Modal(document.getElementById('modalEditMachine')).show();
         }

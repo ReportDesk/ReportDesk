@@ -48,9 +48,21 @@ namespace ReportSystem.Pages.Admin
                 var machine = await _db.MasterMachines.FindAsync(new object[] { EditId.Value }, ct);
                 if (machine is null) return NotFound();
 
+                bool nameExists = await _db.MasterMachines
+                    .AnyAsync(m => m.MachineName == Input.MachineName.Trim()
+                    && (!EditId.HasValue || m.MachineId != EditId.Value), ct);
+
+                if (nameExists)
+                {
+                    ModelState.AddModelError("Input.MachineName", "A machine with this name already exists.");
+                    await LoadMachinesAsync(ct);
+                    return Page();
+                }
+
                 machine.MachineName = Input.MachineName.Trim();
                 machine.MachineArea = Input.Area.Trim();
                 machine.MachineType = Input.Type.Trim();
+                machine.IsActive = Input.IsActive;
                 SuccessMessage = "Machine updated.";
             }
             else
@@ -60,6 +72,7 @@ namespace ReportSystem.Pages.Admin
                     MachineName = Input.MachineName.Trim(),
                     MachineArea = Input.Area.Trim(),
                     MachineType = Input.Type.Trim(),
+                    IsActive = Input.IsActive,
                     CreatedDate = DateTime.Now,
                     CreatedBy = int.Parse(HttpContext.Session.GetString("UserId") ?? "0")
                 });
@@ -67,21 +80,6 @@ namespace ReportSystem.Pages.Admin
             }
 
             await _db.SaveChangesAsync(ct);
-            return RedirectToPage();
-        }
-
-        public async Task<IActionResult> OnPostDeleteAsync(int machineId, CancellationToken ct)
-        {
-            if (!IsAllowed()) return RedirectToPage("/AccessDenied");
-
-            var machine = await _db.MasterMachines.FindAsync(new object[] { machineId }, ct);
-            if (machine is not null)
-            {
-                _db.MasterMachines.Remove(machine);
-                await _db.SaveChangesAsync(ct);
-            }
-
-            SuccessMessage = "Machine deleted.";
             return RedirectToPage();
         }
 
@@ -95,9 +93,25 @@ namespace ReportSystem.Pages.Admin
                     MachineId = m.MachineId,
                     MachineName = m.MachineName,
                     Area = m.MachineArea,
-                    Type = m.MachineType
+                    Type = m.MachineType,
+                    IsActive = m.IsActive
                 })
                 .ToListAsync(ct);
+        }
+
+        public async Task<IActionResult> OnPostDeleteAsync(int machineId, CancellationToken ct)
+        {
+            if (!IsAllowed()) return RedirectToPage("/AccessDenied");
+
+            var machine = await _db.MasterMachines.FindAsync(new object[] { machineId }, ct);
+            if (machine is not null)
+            {
+                machine.IsActive = false;
+                await _db.SaveChangesAsync(ct);
+            }
+
+            SuccessMessage = "Machine deactivated.";
+            return RedirectToPage();
         }
 
         private bool IsAllowed()
@@ -112,6 +126,7 @@ namespace ReportSystem.Pages.Admin
             public string MachineName { get; set; } = string.Empty;
             public string Area { get; set; } = string.Empty;
             public string Type { get; set; } = string.Empty;
+            public bool IsActive { get; set; }
         }
 
         public sealed class MachineFormInput
@@ -124,6 +139,8 @@ namespace ReportSystem.Pages.Admin
 
             [Required]
             public string Type { get; set; } = string.Empty;
+
+            public bool IsActive { get; set; } = true;
         }
     }
 }

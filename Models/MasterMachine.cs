@@ -24,5 +24,8 @@ namespace ReportSystem.Models
 
         [Column("CREATED_ID")]
         public int CreatedBy { get; set; }
+
+        [Column("IS_ACTIVE")]
+        public bool IsActive { get; set; } = true;
     }
 }

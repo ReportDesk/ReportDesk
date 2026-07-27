@@ -42,6 +42,7 @@ namespace ReportSystem.Pages.Report
             {
                 Machines = await _db.Set<MasterMachine>()
                     .AsNoTracking()
+                    .Where(m => m.IsActive)
                     .OrderBy(m => m.MachineName)
                     .ThenBy(m => m.MachineArea)
                     .ToListAsync();

@@ -92,10 +92,6 @@
                                                         onclick="openEditModal(@m.MachineId)">
                                                     Edit
                                                 </button>
-                                                <button type="button" class="btn btn-danger btn-sm"
-                                                        onclick="openDeleteModal(@m.MachineId, '@Html.Raw(Html.Encode(m.MachineName))')">
-                                                    Delete
-                                                </button>
                                             </td>
                                         </tr>
                                     }
@@ -139,6 +135,7 @@
                     <div class="mb-3 form-check">
                         <input type="checkbox" class="form-check-input" id="addIsActive"
                                name="Input.IsActive" value="true" checked />
+                        <input type="hidden" name="Input.IsActive" value="false" />
                         <label class="form-check-label fw-semibold" for="addIsActive">Active</label>
                     </div>
                 </div>
@@ -180,6 +177,7 @@
                     <div class="mb-3 form-check">
                         <input type="checkbox" class="form-check-input" id="editIsActive"
                                name="Input.IsActive" value="true" />
+                        <input type="hidden" name="Input.IsActive" value="false" />
                         <label class="form-check-label fw-semibold" for="editIsActive">Active</label>
                     </div>
                 </div>

@@ -30,6 +30,40 @@ public sealed class ReportController : ControllerBase
         _logger = logger;
     }
 
+    [HttpGet("machines")]
+    public async Task<IActionResult> GetMachines(CancellationToken ct)
+    {
+        try
+        {
+            var machines = await _context.MasterMachines
+                .AsNoTracking()
+                .OrderBy(machine => machine.MachineName)
+                .ThenBy(machine => machine.MachineArea)
+                .Select(machine => new
+                {
+                    machine.MachineId,
+                    machine.MachineName,
+                    MachineArea = machine.MachineArea ?? string.Empty
+                })
+                .ToListAsync(ct);
+
+            return Ok(machines.Select(machine => new
+            {
+                machine.MachineId,
+                machine.MachineName,
+                machine.MachineArea,
+                Label = string.IsNullOrWhiteSpace(machine.MachineArea)
+                    ? machine.MachineName
+                    : $"{machine.MachineName} - {machine.MachineArea}"
+            }));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to load machine list.");
+            return StatusCode(500, new { message = "Could not load machine list. Please refresh or contact support." });
+        }
+    }
+
     [HttpPost("submit")]
     public async Task<IActionResult> SubmitReport([FromForm] SubmitReportForm form, CancellationToken ct)
     {

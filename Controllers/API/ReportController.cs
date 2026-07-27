@@ -37,6 +37,7 @@ public sealed class ReportController : ControllerBase
         {
             var machines = await _context.MasterMachines
                 .AsNoTracking()
+                .Where(machine => machine.IsActive)
                 .OrderBy(machine => machine.MachineName)
                 .ThenBy(machine => machine.MachineArea)
                 .Select(machine => new

@@ -35,24 +35,5 @@ namespace ReportSystem.Pages.Report
                 TimeZoneInfo.FindSystemTimeZoneById("Asia/Jakarta"));
         public List<MasterMachine> Machines { get; set; } = new();
 
-        // ── GET ───────────────────────────────────────────────────────────────
-        public async Task OnGetAsync()
-        {
-            try
-            {
-                Machines = await _db.Set<MasterMachine>()
-                    .AsNoTracking()
-                    .Where(m => m.IsActive)
-                    .OrderBy(m => m.MachineName)
-                    .ThenBy(m => m.MachineArea)
-                    .ToListAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to load machine list for Machine Report page.");
-                MachineLoadError = "Could not load machine list. Please refresh or contact support.";
-                Machines = new List<MasterMachine>();
-            }
-        }
     }
 }

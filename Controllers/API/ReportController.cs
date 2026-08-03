@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using ReportSystem.Helpers;
 using ReportSystem.Models;
 using ReportSystem.Services;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ReportSystem.Controllers.API;
 
@@ -65,6 +66,7 @@ public sealed class ReportController : ControllerBase
         }
     }
 
+    [EnableRateLimiting("reportSubmit")]
     [HttpPost("submit")]
     public async Task<IActionResult> SubmitReport([FromForm] SubmitReportForm form, CancellationToken ct)
     {

@@ -8,6 +8,8 @@ namespace ReportSystem.Controllers.API;
 [Route("api/upload")]
 public class UploadController : ControllerBase
 {
+    private const long MaxTempUploadBytes = 10 * 1024 * 1024;
+
     private readonly IFileValidationService _validator;
     private readonly IImageProcessingService _processor;
     private readonly IR2StorageService _r2;
@@ -26,8 +28,10 @@ public class UploadController : ControllerBase
     }
 
     [HttpPost("temp")]
+    [Consumes("multipart/form-data")]
     [EnableRateLimiting("upload")]
-    [RequestSizeLimit(10 * 1024 * 1024)]
+    [RequestSizeLimit(MaxTempUploadBytes)]
+    [RequestFormLimits(MultipartBodyLengthLimit = MaxTempUploadBytes)]
     public async Task<IActionResult> UploadTemp(IFormFile file, CancellationToken ct)
     {
         if (file is null)
@@ -58,7 +62,8 @@ public class UploadController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
-            return UnprocessableEntity(new { error = ex.Message });
+            _logger.LogWarning(ex, "Image processing rejected upload for file {Name}", file.FileName);
+            return UnprocessableEntity(new { error = "Image content could not be processed." });
         }
         catch (OperationCanceledException)
         {

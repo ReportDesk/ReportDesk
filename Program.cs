@@ -13,6 +13,13 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddRazorPages();
 builder.Services.AddControllers();
+builder.Services.AddAntiforgery(options =>
+{
+    options.HeaderName = "X-CSRF-TOKEN";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Strict;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+});
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("SupabaseDb")));
@@ -34,6 +41,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
 builder.Services.AddAuthorization();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddDistributedMemoryCache();
+builder.Services.AddMemoryCache();
 builder.Services.AddSession(options =>
 {
     options.IdleTimeout = TimeSpan.FromHours(8);
@@ -54,7 +62,35 @@ builder.Services.AddRateLimiter(options =>
             ip,
             _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 5,
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            });
+    });
+
+    options.AddPolicy("upload", httpContext =>
+    {
+        var ip = httpContext.Connection.RemoteIpAddress?.ToString()
+                 ?? "unknown";
+
+        return RateLimitPartition.GetFixedWindowLimiter(
+            ip,
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            });
+    });
+
+    options.AddPolicy("managementUpload", httpContext =>
+    {
+        var userId = httpContext.Session.GetString("UserId") ?? "anonymous";
+        return RateLimitPartition.GetFixedWindowLimiter(
+            userId,
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0
             });
@@ -90,8 +126,18 @@ builder.Services.AddScoped<IConfigurationService, ConfigurationService>();
 builder.Services.AddScoped<ReportSystem.Helpers.AppDbConnection>();
 builder.Services.AddHttpClient<IEmailService, EmailService>();
 builder.Services.AddScoped<IR2StorageService, R2StorageService>();
+builder.Services.AddScoped<IOrphanedObjectCleanupService, OrphanedObjectCleanupService>();
 builder.Services.AddScoped<IFileValidationService, FileValidationService>();
 builder.Services.AddScoped<IImageProcessingService, ImageProcessingService>();
+builder.Services.Configure<AttachmentDeliveryCompatibilityOptions>(
+    builder.Configuration.GetSection(AttachmentDeliveryCompatibilityOptions.SectionName));
+builder.Services.AddSingleton<IAttachmentDeliveryCompatibilityService, AttachmentDeliveryCompatibilityService>();
+builder.Services.AddScoped<IAttachmentMigrationReconciliationService, AttachmentMigrationReconciliationService>();
+var migrationOptions = builder.Configuration
+    .GetSection(AttachmentDeliveryCompatibilityOptions.SectionName)
+    .Get<AttachmentDeliveryCompatibilityOptions>() ?? new AttachmentDeliveryCompatibilityOptions();
+builder.Services.AddSingleton<IAttachmentMigrationObjectStore>(
+    AttachmentMigrationObjectStoreFactory.Create(migrationOptions));
 builder.Services.AddHostedService<TempFileCleanupService>();
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
@@ -110,13 +156,14 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
+app.UseSession();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
-
-app.UseSession();
 
 app.MapRazorPages();
 app.MapControllers();
 
 app.Run();
+
+public partial class Program;

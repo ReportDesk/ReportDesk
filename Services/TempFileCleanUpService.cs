@@ -47,8 +47,10 @@
 
             using var scope = _scopeFactory.CreateScope();
             var r2 = scope.ServiceProvider.GetRequiredService<IR2StorageService>();
+            var orphanedObjectCleanup = scope.ServiceProvider.GetRequiredService<IOrphanedObjectCleanupService>();
 
             await r2.DeleteOldTempFilesAsync(TempFileMaxAge, ct);
+            await orphanedObjectCleanup.RetryPendingDeletesAsync(r2, ct);
         }
     }
 }

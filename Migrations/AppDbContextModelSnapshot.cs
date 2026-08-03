@@ -89,6 +89,11 @@ namespace ReportSystem.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("FOLLOW_UP_DATE");
 
+                    b.Property<string>("IdempotencyClaim")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("IDEMPOTENCY_CLAIM");
+
                     b.Property<string>("MaterialsUsed")
                         .IsRequired()
                         .HasColumnType("text")
@@ -109,7 +114,45 @@ namespace ReportSystem.Migrations
 
                     b.HasKey("FollowUpId");
 
+                    b.HasIndex("IdempotencyClaim")
+                        .IsUnique();
+
                     b.ToTable("MASTER_FOLLOW_UP");
+                });
+
+            modelBuilder.Entity("ReportSystem.Models.PendingR2ObjectDeletion", b =>
+                {
+                    b.Property<int>("PendingR2ObjectDeletionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("PENDING_R2_OBJECT_DELETION_ID");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("PendingR2ObjectDeletionId"));
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("ATTEMPT_COUNT");
+
+                    b.Property<DateTime?>("LastAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("LAST_ATTEMPT_AT");
+
+                    b.Property<string>("ObjectKey")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)")
+                        .HasColumnName("OBJECT_KEY");
+
+                    b.Property<DateTime>("RecordedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("RECORDED_AT");
+
+                    b.HasKey("PendingR2ObjectDeletionId");
+
+                    b.HasIndex("ObjectKey")
+                        .IsUnique();
+
+                    b.ToTable("PENDING_R2_OBJECT_DELETION");
                 });
 
             modelBuilder.Entity("ReportSystem.Models.MasterMachine", b =>

@@ -1,35 +1,41 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using ReportSystem.Filters;
 using ReportSystem.Models;
+using ReportSystem.Services;
 
 namespace ReportSystem.Controllers.API
 {
     [ApiController]
     [Route("api/management")]
     [Produces("application/json")]
-    public class ManagementController : ControllerBase
+    [SessionAuthorize("Admin")]
+    public partial class ManagementController : ControllerBase
     {
         private readonly AppDbContext _context;
         private readonly ILogger<ManagementController> _logger;
-        private readonly IConfiguration _config;
-        private readonly IWebHostEnvironment _env;
+        private readonly IFileValidationService _fileValidator;
+        private readonly IImageProcessingService _imageProcessor;
+        private readonly IR2StorageService _r2;
+        private readonly IAttachmentDeliveryCompatibilityService _attachmentDelivery;
+        private readonly IOrphanedObjectCleanupService _orphanedObjectCleanup;
 
-        public ManagementController(AppDbContext context, ILogger<ManagementController> logger, IConfiguration config, IWebHostEnvironment env)
+        public ManagementController(
+            AppDbContext context,
+            IFileValidationService fileValidator,
+            IImageProcessingService imageProcessor,
+            IR2StorageService r2,
+            IAttachmentDeliveryCompatibilityService attachmentDelivery,
+            IOrphanedObjectCleanupService orphanedObjectCleanup,
+            ILogger<ManagementController> logger)
         {
             _context = context;
+            _fileValidator = fileValidator;
+            _imageProcessor = imageProcessor;
+            _r2 = r2;
+            _attachmentDelivery = attachmentDelivery;
+            _orphanedObjectCleanup = orphanedObjectCleanup;
             _logger = logger;
-            _config = config;
-            _env = env;
-        }
-
-        public class SaveFollowUpForm
-        {
-            public int reportId { get; set; }
-            public string status { get; set; }
-            public string responsiblePerson { get; set; }
-            public string description { get; set; }
-            public string materialsUsed { get; set; }
-            public List<IFormFile>? attachments { get; set; }
         }
 
         public class UpdateStatusForm
@@ -77,7 +83,7 @@ namespace ReportSystem.Controllers.API
                         {
                             attahcmentId = a.AttachmentId,
                             fileName = a.FileName,
-                            filePatch = a.FilePath
+                            filePatch = _attachmentDelivery.Resolve(a.AttachmentId, a.FilePath).DeliveryPath
                         }).ToList()
                 }).ToList();
 
@@ -97,106 +103,13 @@ namespace ReportSystem.Controllers.API
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error retrieving report detail for ID {ReportId}", id);
-                return StatusCode(500, new { message = "An error occurred.", error = ex.Message });
-            }
-        }
-
-        // -- POST /api/managemnet/SaveFollowUp --
-
-        [HttpPost("followup/save")]
-        [Consumes("multipart/form-data")]
-        public async Task<IActionResult> SaveFollowUp([FromForm] SaveFollowUpForm form)
-        {
-            if (form == null ||
-                form.reportId == 0 ||
-                string.IsNullOrWhiteSpace(form.status) ||
-                string.IsNullOrWhiteSpace(form.responsiblePerson) ||
-                string.IsNullOrWhiteSpace(form.description))
-            {
-                return BadRequest(new { message = "Please fill all required fields before submitting." });
-            }
-
-            var allowedStatuses = new[] { "Open", "On Progress", "Close", "Done" };
-            if (!allowedStatuses.Contains(form.status))
-                return BadRequest(new { message = "Invalid status value." });
-
-            var now = DateTime.Now;
-            var actor = User?.Identity?.Name ?? "system";
-
-            await using var tx = await _context.Database.BeginTransactionAsync();
-
-            try
-            {
-                // Update report status
-                var report = await _context.MasterReports.FirstOrDefaultAsync(r => r.ReportId == form.reportId);
-
-                if (report == null)
-                    return NotFound(new { message = "Report not found." });
-
-                report.Status = form.status;
-                report.UpdatedDate = now;
-                report.UpdatedBy = GetCurrentUserId();
-
-                // Insert follow-up record
-                var followUp = new MasterFollowUp
-                {
-                    ReportId = form.reportId,
-                    FollowUpDate = now,
-                    ResponsiblePerson = form.responsiblePerson.Trim(),
-                    MaterialsUsed = form.materialsUsed?.Trim() ?? string.Empty,
-                    Description = form.description.Trim(),
-                    UpdatedBy = GetCurrentUserId()
-                };
-                _context.MasterFollowUps.Add(followUp);
-                await _context.SaveChangesAsync(); // save first to get FollowUpId
-
-                // Handle file attachments
-                if (form.attachments != null && form.attachments.Count > 0)
-                {
-                    var uploadFolder = Path.Combine(_env.WebRootPath, "uploads", "followups");
-                    Directory.CreateDirectory(uploadFolder);
-
-                    foreach (var file in form.attachments)
-                    {
-                        if (file.Length == 0) continue;
-
-                        var ext = Path.GetExtension(file.FileName);
-                        var safeName = $"{Guid.NewGuid()}{ext}";
-                        var fullPath = Path.Combine(uploadFolder, safeName);
-
-                        await using var stream = new FileStream(fullPath, FileMode.Create);
-                        await file.CopyToAsync(stream);
-
-                        _context.Attachments.Add(new Attachment
-                        {
-                            ReportId = form.reportId,
-                            FollowUpId = followUp.FollowUpId,
-                            FileName = file.FileName,
-                            FilePath = $"/uploads/followups/{safeName}",
-                            FileSize = (int)file.Length,
-                            FileType = file.ContentType,
-                            UploadDate = now,
-                            UploadedBy = actor
-                        });
-                    }
-
-                    await _context.SaveChangesAsync();
-                }
-
-                await tx.CommitAsync();
-
-                return Ok(new { message = "Follow-up saved successfully." });
-            }
-            catch (Exception ex)
-            {
-                await tx.RollbackAsync();
-                _logger.LogError(ex, "Error saving follow-up for report ID {ReportId}", form.reportId);
-                return StatusCode(500, new { message = "An error occurred while saving follow-up.", error = ex.Message });
+                return StatusCode(500, new { message = "An error occurred." });
             }
         }
 
         // ── 3. POST /api/management/UpdateStatus ──────────────────────────────
         [HttpPost("UpdateStatus")]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateStatusForm form)
         {
             var allowedStatuses = new[] { "Open", "On Progress", "Close", "Done" };
@@ -222,7 +135,7 @@ namespace ReportSystem.Controllers.API
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating status for report ID {ReportId}", id);
-                return StatusCode(500, new { message = "An error occurred.", error = ex.Message });
+                return StatusCode(500, new { message = "An error occurred." });
             }
         }
 

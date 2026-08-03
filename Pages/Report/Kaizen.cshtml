@@ -133,25 +133,32 @@
             }
 
             function renderPhotoList(container, photos) {
-                container.innerHTML = "";
+                container.replaceChildren();
 
                 photos.forEach((photo) => {
                     const item = document.createElement("div");
                     item.className = "col-6 col-md-4";
-                    item.innerHTML = `
-                        <div class="position-relative border rounded p-2 h-100">
-                            <img src="${photo.previewUrl}" alt="Preview"
-                                 class="img-fluid rounded"
-                                 style="max-height:160px; width:100%; object-fit:cover;" />
-                            <button type="button"
-                                    class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1"
-                                    data-temp-key="${photo.tempKey}"
-                                    title="Remove photo">
-                                ✕
-                            </button>
-                        </div>`;
+                    const frame = document.createElement("div");
+                    frame.className = "position-relative border rounded p-2 h-100";
+                    const image = document.createElement("img");
+                    image.src = photo.previewUrl;
+                    image.alt = "Preview";
+                    image.className = "img-fluid rounded";
+                    image.style.cssText = "max-height:160px; width:100%; object-fit:cover;";
+                    const removeButton = document.createElement("button");
+                    removeButton.type = "button";
+                    removeButton.className = "btn btn-sm btn-danger position-absolute top-0 end-0 m-1";
+                    removeButton.dataset.tempKey = photo.tempKey;
+                    removeButton.title = "Remove photo";
+                    removeButton.textContent = "✕";
+                    frame.append(image, removeButton);
+                    item.appendChild(frame);
                     container.appendChild(item);
                 });
+            }
+
+            function revokePhotoPreview(photo) {
+                URL.revokeObjectURL(photo.previewUrl);
             }
 
             function wirePhotoSlot({ inputId, statusId, previewListId, getPhotos, setPhotos }) {
@@ -174,6 +181,8 @@
                     for (const file of files) {
                         const fd = new FormData();
                         fd.append("file", file);
+                        const previewUrl = URL.createObjectURL(file);
+                        let keepPreview = false;
 
                         try {
                             const res = await fetch("/api/upload/temp", { method: "POST", body: fd });
@@ -189,14 +198,18 @@
                             nextPhotos.push({
                                 tempKey: data.tempKey,
                                 uploadOwnerToken: data.uploadOwnerToken,
-                                previewUrl: data.previewUrl
+                                previewUrl
                             });
+                            keepPreview = true;
                             setPhotos(nextPhotos);
                             renderPhotoList(previewList, nextPhotos);
                         } catch {
                             status.textContent = `Upload error for ${file.name}. Please try again.`;
                             status.className = "form-text text-danger mt-1";
                         } finally {
+                            if (!keepPreview) {
+                                URL.revokeObjectURL(previewUrl);
+                            }
                             slotActiveUploads -= 1;
                             activeUploadCount -= 1;
                             updateSlotStatus(status, getPhotos(), slotActiveUploads);
@@ -218,12 +231,17 @@
 
                     removeButton.disabled = true;
                     await deleteTempKey(photo);
+                    revokePhotoPreview(photo);
                     const nextPhotos = getPhotos().filter(x => x.tempKey !== tempKey);
                     setPhotos(nextPhotos);
                     renderPhotoList(previewList, nextPhotos);
                     updateSlotStatus(status, nextPhotos, slotActiveUploads);
                 });
             }
+
+            window.addEventListener("pagehide", () => {
+                beforePhotos.concat(afterPhotos).forEach(revokePhotoPreview);
+            });
 
             async function deleteTempKey(photo) {
                 if (!photo?.tempKey || !photo?.uploadOwnerToken) return;

@@ -9,6 +9,8 @@ namespace ReportSystem.Services
     {
         Task<string> UploadTempAsync(Stream stream, string fileName, string userId, CancellationToken ct = default);
         Task<string> FinalizeTempAsync(string tempKey, string reportId, CancellationToken ct = default);
+        Task<string> FinalizeFollowUpTempAsync(string tempKey, string reportId, CancellationToken ct = default);
+        Task<Stream> OpenReadAsync(string key, CancellationToken ct = default);
         Task DeleteAsync(string key, CancellationToken ct = default);
         Task DeleteOldTempFilesAsync(TimeSpan olderThan, CancellationToken ct = default);
         string GetPublicUrl(string key);
@@ -19,12 +21,18 @@ namespace ReportSystem.Services
         private readonly IAmazonS3 _s3;
         private readonly R2Options _options;
         private readonly ILogger<R2StorageService> _logger;
+        private readonly IOrphanedObjectCleanupService _orphanedObjectCleanup;
 
-        public R2StorageService(IAmazonS3 s3, IOptions<R2Options> options, ILogger<R2StorageService> logger )
+        public R2StorageService(
+            IAmazonS3 s3,
+            IOptions<R2Options> options,
+            ILogger<R2StorageService> logger,
+            IOrphanedObjectCleanupService orphanedObjectCleanup)
         {
             _s3 = s3;
             _options = options.Value;
             _logger = logger;
+            _orphanedObjectCleanup = orphanedObjectCleanup;
         }
 
         public async Task<string> UploadTempAsync(Stream stream, string fileName, string userId, CancellationToken ct = default)
@@ -59,23 +67,55 @@ namespace ReportSystem.Services
 
         public async Task<string> FinalizeTempAsync(string tempKey, string reportId, CancellationToken ct = default)
         {
-            if (!tempKey.StartsWith("temp/"))
-                throw new InvalidOperationException($"Key is not a temp file: {tempKey}");
-
             var finalKey = $"reports/{reportId}/{Guid.NewGuid():N}.webp";
+            return await FinalizeTempAsAsync(tempKey, finalKey, ct);
+        }
 
-            var copyRequest = new CopyObjectRequest
+        public async Task<string> FinalizeFollowUpTempAsync(
+            string tempKey,
+            string reportId,
+            CancellationToken ct = default)
+        {
+            var finalKey = $"reports/{reportId}/followups/{Guid.NewGuid():N}.webp";
+            return await FinalizeTempAsAsync(tempKey, finalKey, ct);
+        }
+
+        private async Task<string> FinalizeTempAsAsync(
+            string tempKey,
+            string finalKey,
+            CancellationToken ct)
+        {
+            if (!tempKey.StartsWith("temp/", StringComparison.Ordinal))
+                throw new InvalidOperationException("Only temporary objects can be finalized.");
+
+            await _s3.CopyObjectAsync(new CopyObjectRequest
             {
                 SourceBucket = _options.BucketName,
                 SourceKey = tempKey,
                 DestinationBucket = _options.BucketName,
                 DestinationKey = finalKey
-            };
+            }, ct);
 
-            await _s3.CopyObjectAsync(copyRequest, ct);
-            await DeleteAsync(tempKey, ct);
+            try
+            {
+                await DeleteAsync(tempKey, ct);
+            }
+            catch
+            {
+                try
+                {
+                    await DeleteAsync(finalKey, CancellationToken.None);
+                }
+                catch (Exception cleanupError)
+                {
+                    _logger.LogError(cleanupError, "Failed to remove copied R2 object {FinalKey}", finalKey);
+                    await _orphanedObjectCleanup.RecordFailedDeleteAsync(finalKey, CancellationToken.None);
+                }
 
-            _logger.LogInformation("Finalized {TempKey} -> {FinalKey}", tempKey, finalKey);
+                throw;
+            }
+
+            _logger.LogInformation("Finalized {TempKey} to {FinalKey}", tempKey, finalKey);
             return finalKey;
         }
 
@@ -83,6 +123,15 @@ namespace ReportSystem.Services
         {
             await _s3.DeleteObjectAsync(_options.BucketName, key, ct);
             _logger.LogInformation("Deleted R2 object: {Key}", key);
+        }
+
+        public async Task<Stream> OpenReadAsync(string key, CancellationToken ct = default)
+        {
+            using var response = await _s3.GetObjectAsync(_options.BucketName, key, ct);
+            var stream = new MemoryStream();
+            await response.ResponseStream.CopyToAsync(stream, ct);
+            stream.Position = 0;
+            return stream;
         }
 
         public async Task DeleteOldTempFilesAsync(TimeSpan olderThan, CancellationToken ct = default)

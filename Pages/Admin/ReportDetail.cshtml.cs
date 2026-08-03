@@ -15,12 +15,18 @@ namespace ReportSystem.Pages.Admin
         private readonly AppDbContext _db;
         private readonly IR2StorageService _r2;
         private readonly IDataProtectionProvider _dataProtectionProvider;
+        private readonly IAttachmentDeliveryCompatibilityService _attachmentDelivery;
 
-        public ReportDetailModel(AppDbContext db, IR2StorageService r2, IDataProtectionProvider dataProtectionProvider)
+        public ReportDetailModel(
+            AppDbContext db,
+            IR2StorageService r2,
+            IDataProtectionProvider dataProtectionProvider,
+            IAttachmentDeliveryCompatibilityService attachmentDelivery)
         {
             _db = db;
             _r2 = r2;
             _dataProtectionProvider = dataProtectionProvider;
+            _attachmentDelivery = attachmentDelivery;
         }
 
         [BindProperty(SupportsGet = true)]
@@ -363,7 +369,7 @@ namespace ReportSystem.Pages.Admin
                 {
                     AttachmentId = a.AttachmentId,
                     FileName = a.FileName,
-                    FilePath = a.FilePath,
+                    FilePath = _attachmentDelivery.Resolve(a.AttachmentId, a.FilePath).DeliveryPath ?? string.Empty,
                     FileType = a.FileType ?? string.Empty
                 }).ToList();
 
@@ -402,7 +408,7 @@ namespace ReportSystem.Pages.Admin
                     {
                         AttachmentId = a.AttachmentId,
                         FileName = a.FileName,
-                        FilePath = a.FilePath,
+                        FilePath = _attachmentDelivery.Resolve(a.AttachmentId, a.FilePath).DeliveryPath ?? string.Empty,
                         FileType = a.FileType ?? string.Empty
                     }).ToList();
 

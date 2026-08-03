@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using ReportSystem.Helpers;
 using ReportSystem.Models;
+using ReportSystem.Services;
 
 namespace ReportSystem.Pages.Admin
 {
@@ -15,11 +16,16 @@ namespace ReportSystem.Pages.Admin
 
         private readonly AppDbContext _db;
         private readonly IDataProtectionProvider _dataProtectionProvider;
+        private readonly IAttachmentDeliveryCompatibilityService _attachmentDelivery;
 
-        public ReportListModel(AppDbContext db, IDataProtectionProvider dataProtectionProvider)
+        public ReportListModel(
+            AppDbContext db,
+            IDataProtectionProvider dataProtectionProvider,
+            IAttachmentDeliveryCompatibilityService attachmentDelivery)
         {
             _db = db;
             _dataProtectionProvider = dataProtectionProvider;
+            _attachmentDelivery = attachmentDelivery;
         }
 
         [BindProperty(SupportsGet = true)] public string ReportType { get; set; } = string.Empty;
@@ -373,7 +379,7 @@ namespace ReportSystem.Pages.Admin
             };
         }
 
-        private static string[] GetExportValues(
+        private string[] GetExportValues(
             MasterReport report,
             MasterFollowUp? followUp,
             List<Attachment> reportAttachments,
@@ -443,10 +449,10 @@ namespace ReportSystem.Pages.Admin
             return date.ToString("yyyy-MM-dd HH:mm");
         }
 
-        private static string JoinLinks(IEnumerable<Attachment> attachments)
+        private string JoinLinks(IEnumerable<Attachment> attachments)
         {
             return string.Join(", ", attachments
-                .Select(a => a.FilePath)
+                .Select(a => _attachmentDelivery.Resolve(a.AttachmentId, a.FilePath).DeliveryPath)
                 .Where(path => !string.IsNullOrWhiteSpace(path)));
         }
 

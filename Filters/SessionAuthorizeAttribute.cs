@@ -8,6 +8,8 @@ namespace ReportSystem.Filters
     {
         private readonly string[] _allowedRoles;
 
+        public IReadOnlyList<string> AllowedRoles => _allowedRoles;
+
         public SessionAuthorizeAttribute(params string[] roles)
         {
             _allowedRoles = roles;

@@ -27,5 +27,9 @@ namespace ReportSystem.Models
 
         [Column("UPDATED_BY")]
         public int UpdatedBy { get; set; }
+
+        [MaxLength(64)]
+        [Column("IDEMPOTENCY_CLAIM")]
+        public string? IdempotencyClaim { get; set; }
     }
 }

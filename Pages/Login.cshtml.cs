@@ -171,19 +171,30 @@ namespace ReportSystem.Pages
                 if (user == null)
                     return null;
 
-                // Check active user
                 if (user.IsActive != (byte)1)
                 {
                     ErrorMessage = "User Inactive";
                     return null;
                 }
 
-                // Verify password
                 if (BCrypt.Net.BCrypt.Verify(password, user.Password))
                 {
+                    user.FailedLoginCount = 0;
+                    await _context.SaveChangesAsync();
                     return user;
                 }
 
+                user.FailedLoginCount++;
+
+                if (user.FailedLoginCount >= 5)
+                {
+                    user.IsActive = (byte)0;
+                    await _context.SaveChangesAsync();
+                    ErrorMessage = "Too many failed attempts. Account deactivated.";
+                    return null;
+                }
+
+                await _context.SaveChangesAsync();
                 ErrorMessage = "Invalid Password";
                 return null;
             }

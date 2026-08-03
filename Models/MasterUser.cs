@@ -40,6 +40,9 @@ namespace ReportSystem.Models
         [Column("PASSWORD_RESET_EXPIRY")]
         public DateTime? PasswordResetExpiry { get; set; }
 
+        [Column("FAILED_LOGIN_COUNT")]
+        public int FailedLoginCount { get; set; }
+
         [NotMapped]
         public bool IsActiveFlag
         {

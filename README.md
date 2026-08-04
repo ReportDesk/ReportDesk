@@ -102,7 +102,7 @@ ReportSystem/
 | `SixLabors.ImageSharp` | Server-side image processing |
 | `ClosedXML` | Excel report generation |
 | `BCrypt.Net-Next` | Password hashing |
-| `MailKit` | Email support |
+| `Resend` | Email support |
 
 ## Notes
 

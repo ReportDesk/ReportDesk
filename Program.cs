@@ -2,6 +2,7 @@ using Amazon.Runtime;
 using Amazon.S3;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using ReportSystem.Helpers;
 using ReportSystem.Services;
@@ -9,6 +10,15 @@ using Supabase;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Railway terminates TLS and forwards requests through its reverse proxy. Trust its
+// forwarded headers so rate limits are partitioned by the actual client IP address.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 // Add services to the container.
 builder.Services.AddRazorPages();
@@ -47,7 +57,7 @@ builder.Services.AddRateLimiter(options =>
 {
     options.AddPolicy("upload", httpContext =>
     {
-        var ip = httpContext.Connection.RemoteIpAddress?.ToString()
+        var ip = httpContext.Connection.RemoteIpAddress?.MapToIPv4().ToString()
                  ?? "unknown";
 
         return RateLimitPartition.GetFixedWindowLimiter(
@@ -62,7 +72,7 @@ builder.Services.AddRateLimiter(options =>
 
     options.AddPolicy("reportSubmit", httpContext =>
     {
-        var ip = httpContext.Connection.RemoteIpAddress?.ToString()
+        var ip = httpContext.Connection.RemoteIpAddress?.MapToIPv4().ToString()
                  ?? "unknown";
 
         return RateLimitPartition.GetFixedWindowLimiter(
@@ -121,6 +131,7 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
+app.UseForwardedHeaders();
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 

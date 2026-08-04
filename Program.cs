@@ -45,6 +45,13 @@ builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddRateLimiter(options =>
 {
+    options.AddFixedWindowLimiter("upload", limiter =>
+    {
+        limiter.PermitLimit = 10;
+        limiter.Window = TimeSpan.FromMinutes(1);
+        limiter.QueueLimit = 0;
+    });
+
     options.AddPolicy("reportSubmit", httpContext =>
     {
         var ip = httpContext.Connection.RemoteIpAddress?.ToString()

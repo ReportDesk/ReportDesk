@@ -300,6 +300,12 @@
                 </div>
 
                 <div class="modal-body">
+                    @if (TempData["ExportError"] is string exportError && !string.IsNullOrWhiteSpace(exportError))
+                    {
+                        <div class="alert alert-danger py-2 px-3 small mb-3" role="alert">
+                            @exportError
+                        </div>
+                    }
                     <input type="hidden" name="handler" value="Export" />
                     <input type="hidden" name="ReportType" value="@Model.ReportType" />
 
@@ -411,6 +417,14 @@
                     zeroRecords: 'No Report Found.'
                 }
             });
+
+            @if (TempData.Peek("ExportError") is string exportErrorJs && !string.IsNullOrWhiteSpace(exportErrorJs))
+            {
+                    <text>
+                    var exportModalInstance = new bootstrap.Modal(document.getElementById('exportExcelModal'));
+                    exportModalInstance.show();
+                    </text>
+            }
 
             const exportModal = document.getElementById('exportExcelModal');
             const exportForm = document.getElementById('exportExcelForm');

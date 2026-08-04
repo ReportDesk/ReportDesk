@@ -53,6 +53,7 @@ namespace ReportSystem.Pages.Admin
 
         public List<ReportRow> ReportRows { get; set; } = [];
         public string LoadError { get; set; } = string.Empty;
+        [TempData] public string? ExportError { get; set; }
 
         public async Task<IActionResult> OnGetAsync(CancellationToken ct)
         {
@@ -107,6 +108,13 @@ namespace ReportSystem.Pages.Admin
             var authorizationRedirect = GetAuthorizationRedirect();
             if (authorizationRedirect is not null)
                 return authorizationRedirect;
+
+            var validationError = ValidateExportFilters();
+            if (validationError is not null)
+            {
+                TempData["ExportError"] = validationError;
+                return RedirectToPage(new { ReportType, FromDate, ToDate, Status, MachineId });
+            }
 
             var reports = await BuildFilteredReportQuery()
                 .OrderByDescending(r => r.SubmissionDate)
@@ -175,6 +183,47 @@ namespace ReportSystem.Pages.Admin
                 Value = m.MachineId.ToString(),
                 Text = m.MachineName
             }).ToList();
+        }
+
+        private string? ValidateExportFilters()
+        {
+            var validTypes = new[] { "Machine", "NearMiss", "Suggestion", "Kaizen" };
+            if (!validTypes.Contains(ReportType))
+                return "Invalid report type.";
+
+            DateTime? from = null, to = null;
+
+            if (!string.IsNullOrWhiteSpace(FromDate))
+            {
+                if (!DateTime.TryParse(FromDate, out var f))
+                    return "Invalid From Date.";
+                from = f;
+            }
+
+            if (!string.IsNullOrWhiteSpace(ToDate))
+            {
+                if (!DateTime.TryParse(ToDate, out var t))
+                    return "Invalid To Date.";
+                to = t;
+            }
+
+            if (from.HasValue && to.HasValue && from.Value.Date > to.Value.Date)
+                return "From Date cannot be later than To Date.";
+
+            var validStatuses = new[] { "open", "on progress", "close" };
+            var normalizedStatuses = (Status ?? new List<string>())
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Select(s => s.Trim().ToLower())
+                .ToList();
+
+            if (normalizedStatuses.Any(s => !validStatuses.Contains(s)))
+                return "Invalid status filter.";
+
+            if (IsMachineType && MachineId.HasValue &&
+                !_db.MasterMachines.Any(m => m.MachineId == MachineId.Value))
+                return "Invalid machine selected.";
+
+            return null;
         }
 
         private IQueryable<MasterReport> BuildFilteredReportQuery()

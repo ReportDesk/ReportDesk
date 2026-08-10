@@ -7,7 +7,17 @@ namespace ReportSystem.Services
 {
     public interface IR2StorageService
     {
-        Task<string> UploadTempAsync(Stream stream, string fileName, string userId, CancellationToken ct = default);
+        Task<string> UploadTempAsync(
+            Stream stream,
+            string fileName,
+            string userId,
+            bool isValidatedReportPhoto = false,
+            string? photoValidationMethod = null,
+            DateTimeOffset? photoCapturedAt = null,
+            CancellationToken ct = default);
+        Task<bool> IsValidatedReportPhotoAsync(string tempKey, CancellationToken ct = default);
+        Task<bool> IsUnverifiedReportPhotoAsync(string tempKey, CancellationToken ct = default);
+        Task<PhotoValidationMetadata?> GetPhotoValidationAsync(string key, CancellationToken ct = default);
         Task<string> FinalizeTempAsync(string tempKey, string reportId, CancellationToken ct = default);
         Task DeleteAsync(string key, CancellationToken ct = default);
         Task DeleteOldTempFilesAsync(TimeSpan olderThan, CancellationToken ct = default);
@@ -27,7 +37,14 @@ namespace ReportSystem.Services
             _logger = logger;
         }
 
-        public async Task<string> UploadTempAsync(Stream stream, string fileName, string userId, CancellationToken ct = default)
+        public async Task<string> UploadTempAsync(
+            Stream stream,
+            string fileName,
+            string userId,
+            bool isValidatedReportPhoto = false,
+            string? photoValidationMethod = null,
+            DateTimeOffset? photoCapturedAt = null,
+            CancellationToken ct = default)
         {
             var key = $"temp/{userId}/{Guid.NewGuid():N}.webp";
 
@@ -48,13 +65,90 @@ namespace ReportSystem.Services
                 Metadata =
                 {
                     ["uploaded-at"] = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(),
-                    ["original-name"] = Path.GetFileName(fileName)
+                    ["original-name"] = Path.GetFileName(fileName),
+                    ["report-photo-validated"] = isValidatedReportPhoto.ToString().ToLowerInvariant(),
+                    ["photo-validation-method"] = photoValidationMethod ?? string.Empty,
+                    ["photo-captured-at"] = photoCapturedAt?.ToUnixTimeSeconds().ToString() ?? string.Empty
                 }
             };
 
             await _s3.PutObjectAsync(request, ct);
             _logger.LogInformation("Temp upload success: {key}", key);
             return key;
+        }
+
+        public async Task<bool> IsValidatedReportPhotoAsync(string tempKey, CancellationToken ct = default)
+        {
+            try
+            {
+                var response = await _s3.GetObjectMetadataAsync(new GetObjectMetadataRequest
+                {
+                    BucketName = _options.BucketName,
+                    Key = tempKey
+                }, ct);
+
+                return string.Equals(
+                    response.Metadata["report-photo-validated"],
+                    "true",
+                    StringComparison.OrdinalIgnoreCase);
+            }
+            catch (AmazonS3Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not verify report photo validation for temp key {TempKey}", tempKey);
+                return false;
+            }
+        }
+
+        public async Task<bool> IsUnverifiedReportPhotoAsync(string tempKey, CancellationToken ct = default)
+        {
+            try
+            {
+                var response = await _s3.GetObjectMetadataAsync(new GetObjectMetadataRequest
+                {
+                    BucketName = _options.BucketName,
+                    Key = tempKey
+                }, ct);
+
+                return string.Equals(
+                    response.Metadata["photo-validation-method"],
+                    "unverified",
+                    StringComparison.Ordinal);
+            }
+            catch (AmazonS3Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not read report photo validation metadata for {Key}", tempKey);
+                return false;
+            }
+        }
+
+        public async Task<PhotoValidationMetadata?> GetPhotoValidationAsync(string key, CancellationToken ct = default)
+        {
+            try
+            {
+                var response = await _s3.GetObjectMetadataAsync(new GetObjectMetadataRequest
+                {
+                    BucketName = _options.BucketName,
+                    Key = key
+                }, ct);
+
+                var method = response.Metadata["photo-validation-method"];
+                if (string.IsNullOrWhiteSpace(method))
+                    return null;
+
+                DateTimeOffset? capturedAt = null;
+                if (long.TryParse(response.Metadata["photo-captured-at"], out var capturedAtSeconds))
+                    capturedAt = DateTimeOffset.FromUnixTimeSeconds(capturedAtSeconds);
+
+                return new PhotoValidationMetadata(
+                    IsValidated: string.Equals(response.Metadata["report-photo-validated"], "true", StringComparison.OrdinalIgnoreCase),
+                    Method: method,
+                    CapturedAt: capturedAt);
+            }
+            catch (AmazonS3Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not read report photo validation metadata for {Key}", key);
+                return null;
+            }
         }
 
         public async Task<string> FinalizeTempAsync(string tempKey, string reportId, CancellationToken ct = default)
@@ -128,3 +222,5 @@ namespace ReportSystem.Services
         public string GetPublicUrl(string key) => $"{_options.PublicBaseUrl.TrimEnd('/')}/{key}";
     }
 }
+
+public sealed record PhotoValidationMetadata(bool IsValidated, string Method, DateTimeOffset? CapturedAt);

@@ -68,7 +68,10 @@
                                 <label class="form-label fw-semibold">Upload Foto (Optional)</label>
                                 <input id="photoInput" type="file" class="form-control"
                                        accept=".jpg,.jpeg,.png" multiple />
-                                <div id="photoStatus" class="form-text text-muted mt-1"></div>
+                                <button id="openCameraBtn" type="button" class="btn btn-outline-primary btn-sm mt-2">
+                                    Take Photo in App
+                                </button>
+                                <div id="photoStatus" class="form-text text-muted mt-1">Gallery photos need valid capture metadata. Use Take Photo in App for a fresh PNG photo.</div>
                                 <div id="photoPreviewList" class="mt-2 row g-2"></div>
                             </div>
 
@@ -87,6 +90,43 @@
     </div>
 </div>
 
+<div class="modal fade" id="machineCameraModal" tabindex="-1" aria-labelledby="machineCameraModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="machineCameraModalLabel">Take Machine Photo</h5>
+            </div>
+            <div class="modal-body">
+                <video id="cameraVideo" class="w-100 rounded bg-dark" autoplay muted playsinline></video>
+                <canvas id="cameraCanvas" class="d-none"></canvas>
+                <p class="form-text mb-0 mt-2">The photo is validated using this camera session and the server upload time.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button id="capturePhotoBtn" type="button" class="btn btn-primary">Capture Photo</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="photoErrorModal" tabindex="-1" aria-labelledby="photoErrorModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title text-danger" id="photoErrorModalLabel">Photo Could Not Be Accepted</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body pt-0">
+                <p id="photoErrorMessage" class="mb-2"></p>
+                <p class="text-muted small mb-0">Take a new photo in the app, or choose the original photo file from your device.</p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
@@ -94,6 +134,8 @@
             // ── state ────────────────────────────────────────────────────────
             let uploadedPhotos = [];
             let activeUploadCount = 0;
+            let cameraStream = null;
+            let captureSessionToken = null;
 
             // ── element refs ─────────────────────────────────────────────────
             const photoInput      = document.getElementById("photoInput");
@@ -103,6 +145,14 @@
             const formError       = document.getElementById("formError");
             const inputMachine    = document.getElementById("inputMachine");
             const machineLoadError = document.getElementById("machineLoadError");
+            const openCameraBtn = document.getElementById("openCameraBtn");
+            const machineCameraModal = new bootstrap.Modal(document.getElementById("machineCameraModal"));
+            const cameraModalElement = document.getElementById("machineCameraModal");
+            const cameraVideo = document.getElementById("cameraVideo");
+            const cameraCanvas = document.getElementById("cameraCanvas");
+            const capturePhotoBtn = document.getElementById("capturePhotoBtn");
+            const photoErrorModal = new bootstrap.Modal(document.getElementById("photoErrorModal"));
+            const photoErrorMessage = document.getElementById("photoErrorMessage");
 
             // ── helpers ──────────────────────────────────────────────────────
             function setPhotoStatus(msg, type = "muted") {
@@ -127,6 +177,12 @@
                 }
 
                 const suffix = uploadedPhotos.length === 1 ? "" : "s";
+                const unverifiedCount = uploadedPhotos.filter(photo => photo.validationStatus === "unverified").length;
+                if (unverifiedCount > 0) {
+                    setPhotoStatus(`${uploadedPhotos.length} photo${suffix} ready. ${unverifiedCount} is unverified and is allowed only in development mode.`, "warning");
+                    return;
+                }
+
                 setPhotoStatus(`${uploadedPhotos.length} photo${suffix} ready.`, "success");
             }
 
@@ -172,6 +228,11 @@
             function setSubmitState(disabled, text = "Submit") {
                 submitBtn.disabled = disabled;
                 submitBtn.textContent = text;
+            }
+
+            function showPhotoError(message) {
+                photoErrorMessage.textContent = message;
+                photoErrorModal.show();
             }
 
             async function readJsonSafe(response) {
@@ -223,6 +284,54 @@
                 }
             }
 
+            async function uploadPhoto(file, captureToken = null) {
+                const fd = new FormData();
+                fd.append("file", file);
+                fd.append("purpose", "machine-report");
+                if (captureToken) fd.append("captureSessionToken", captureToken);
+
+                try {
+                    const res = await fetch("/api/upload/temp", { method: "POST", body: fd });
+                    const data = await readJsonSafe(res);
+
+                    if (!res.ok) {
+                        const message = data.error || data.message || `Upload failed for ${file.name}.`;
+                        setPhotoStatus(message, "danger");
+                        showPhotoError(message);
+                        return false;
+                    }
+
+                    uploadedPhotos.push({
+                        tempKey: data.tempKey,
+                        uploadOwnerToken: data.uploadOwnerToken,
+                        previewUrl: data.previewUrl,
+                        validationStatus: data.photoValidationStatus
+                    });
+                    renderPhotoPreviews();
+                    return true;
+                } catch {
+                    setPhotoStatus(`Upload error for ${file.name}. Please try again.`, "danger");
+                    return false;
+                }
+            }
+
+            async function createCaptureSession() {
+                const res = await fetch("/api/upload/capture-session", { method: "POST" });
+                const data = await readJsonSafe(res);
+                if (!res.ok || !data.token) {
+                    throw new Error(data.error || "Could not start a camera capture session.");
+                }
+
+                return data.token;
+            }
+
+            function stopCamera() {
+                cameraStream?.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+                cameraVideo.srcObject = null;
+                captureSessionToken = null;
+            }
+
             // ── client-side validation ───────────────────────────────────────
             function validate() {
                 clearErrors();
@@ -255,27 +364,8 @@
                 setSubmitState(true, "Uploading photo…");
 
                 for (const file of files) {
-                    const fd = new FormData();
-                    fd.append("file", file);
-
                     try {
-                        const res = await fetch("/api/upload/temp", { method: "POST", body: fd });
-                        const data = await readJsonSafe(res);
-
-                        if (!res.ok) {
-                            const message = data.error || data.message || `Upload failed for ${file.name}.`;
-                            setPhotoStatus(message, "danger");
-                            continue;
-                        }
-
-                        uploadedPhotos.push({
-                            tempKey: data.tempKey,
-                            uploadOwnerToken: data.uploadOwnerToken,
-                            previewUrl: data.previewUrl
-                        });
-                        renderPhotoPreviews();
-                    } catch {
-                        setPhotoStatus(`Upload error for ${file.name}. Please try again.`, "danger");
+                        await uploadPhoto(file);
                     } finally {
                         activeUploadCount -= 1;
                         updatePhotoStatus();
@@ -286,6 +376,62 @@
                 photoInput.disabled = false;
                 setSubmitState(false, "Submit");
             });
+
+            openCameraBtn.addEventListener("click", async function () {
+                if (!navigator.mediaDevices?.getUserMedia) {
+                    setPhotoStatus("Camera capture is not supported by this browser. Upload the original photo instead.", "danger");
+                    return;
+                }
+
+                openCameraBtn.disabled = true;
+                try {
+                    captureSessionToken = await createCaptureSession();
+                    cameraStream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: { ideal: "environment" } },
+                        audio: false
+                    });
+                    cameraVideo.srcObject = cameraStream;
+                    machineCameraModal.show();
+                } catch (error) {
+                    captureSessionToken = null;
+                    setPhotoStatus(error.message || "Could not access the camera. Check camera permission and try again.", "danger");
+                } finally {
+                    openCameraBtn.disabled = false;
+                }
+            });
+
+            capturePhotoBtn.addEventListener("click", async function () {
+                if (!captureSessionToken || !cameraVideo.videoWidth || !cameraVideo.videoHeight) return;
+
+                capturePhotoBtn.disabled = true;
+                photoInput.disabled = true;
+                activeUploadCount += 1;
+                updatePhotoStatus();
+                setSubmitState(true, "Uploading photo…");
+
+                try {
+                    cameraCanvas.width = cameraVideo.videoWidth;
+                    cameraCanvas.height = cameraVideo.videoHeight;
+                    cameraCanvas.getContext("2d").drawImage(cameraVideo, 0, 0);
+                    const photoBlob = await new Promise(resolve => cameraCanvas.toBlob(resolve, "image/png"));
+
+                    if (!photoBlob) throw new Error("Could not capture the photo. Please try again.");
+
+                    const photoFile = new File([photoBlob], "machine-capture.png", { type: "image/png" });
+                    const uploaded = await uploadPhoto(photoFile, captureSessionToken);
+                    if (uploaded) machineCameraModal.hide();
+                } catch (error) {
+                    setPhotoStatus(error.message || "Could not capture the photo. Please try again.", "danger");
+                } finally {
+                    activeUploadCount -= 1;
+                    updatePhotoStatus();
+                    photoInput.disabled = false;
+                    capturePhotoBtn.disabled = false;
+                    setSubmitState(false, "Submit");
+                }
+            });
+
+            cameraModalElement.addEventListener("hidden.bs.modal", stopCamera);
 
             // ── remove photo ─────────────────────────────────────────────────
             photoPreviewList.addEventListener("click", async function (e) {

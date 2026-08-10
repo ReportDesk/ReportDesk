@@ -138,7 +138,7 @@
                                 <select id="reportPhotoSelect" class="form-select form-select-sm mb-2">
                                     @for (var i = 0; i < Model.ReportPhotos.Count; i++)
                                     {
-                                        <option value="@Model.ReportPhotos[i].FilePath">Photo @(i + 1) of @Model.ReportPhotos.Count</option>
+                                        <option value="@Model.ReportPhotos[i].FilePath" data-photo-validation="@Model.ReportPhotos[i].PhotoValidationLabel">Photo @(i + 1) of @Model.ReportPhotos.Count</option>
                                     }
                                 </select>
                             }
@@ -152,6 +152,7 @@
                                      data-bs-toggle="modal" data-bs-target="#photoModal"
                                      data-photo-src="@Model.ReportPhotos.First().FilePath" />
                             </div>
+                            <small id="reportPhotoValidation" class="form-text text-muted">@Model.ReportPhotos.First().PhotoValidationLabel</small>
                         </div>
                     }
                     else if (isKaizen)
@@ -166,7 +167,7 @@
                                     <select id="beforePhotoSelect" class="form-select form-select-sm mb-2">
                                         @for (var i = 0; i < Model.BeforePhotos.Count; i++)
                                         {
-                                            <option value="@Model.BeforePhotos[i].FilePath">Photo @(i + 1) of @Model.BeforePhotos.Count</option>
+                                            <option value="@Model.BeforePhotos[i].FilePath" data-photo-validation="@Model.BeforePhotos[i].PhotoValidationLabel">Photo @(i + 1) of @Model.BeforePhotos.Count</option>
                                         }
                                     </select>
                                 }
@@ -180,6 +181,7 @@
                                          data-bs-toggle="modal" data-bs-target="#photoModal"
                                          data-photo-src="@Model.BeforePhotos.First().FilePath" />
                                 </div>
+                                <small id="beforePhotoValidation" class="form-text text-muted">@Model.BeforePhotos.First().PhotoValidationLabel</small>
                             </div>
                         }
 
@@ -195,7 +197,7 @@
                                     <select id="afterPhotoSelect" class="form-select form-select-sm mb-2">
                                         @for (var i = 0; i < Model.AfterPhotos.Count; i++)
                                         {
-                                            <option value="@Model.AfterPhotos[i].FilePath">Photo @(i + 1) of @Model.AfterPhotos.Count</option>
+                                            <option value="@Model.AfterPhotos[i].FilePath" data-photo-validation="@Model.AfterPhotos[i].PhotoValidationLabel">Photo @(i + 1) of @Model.AfterPhotos.Count</option>
                                         }
                                     </select>
                                 }
@@ -209,6 +211,7 @@
                                          data-bs-toggle="modal" data-bs-target="#photoModal"
                                          data-photo-src="@Model.AfterPhotos.First().FilePath" />
                                 </div>
+                                <small id="afterPhotoValidation" class="form-text text-muted">@Model.AfterPhotos.First().PhotoValidationLabel</small>
                             </div>
                         }
                     }
@@ -328,7 +331,8 @@
                                     @for (var i = 0; i < Model.FollowUpPhotos.Count; i++)
                                     {
                                         <option value="@Model.FollowUpPhotos[i].FilePath"
-                                                data-attachment-id="@Model.FollowUpPhotos[i].AttachmentId">
+                                                data-attachment-id="@Model.FollowUpPhotos[i].AttachmentId"
+                                                data-photo-validation="@Model.FollowUpPhotos[i].PhotoValidationLabel">
                                             Photo @(i + 1) of @Model.FollowUpPhotos.Count
                                         </option>
                                     }
@@ -345,6 +349,7 @@
                                      data-photo-src="@Model.FollowUpPhotos.First().FilePath"
                                      data-attachment-id="@Model.FollowUpPhotos.First().AttachmentId" />
                             </div>
+                            <small id="followUpExistingPhotoValidation" class="form-text text-muted">@Model.FollowUpPhotos.First().PhotoValidationLabel</small>
                             @if (!Model.IsReportClosed)
                             {
                                 <button type="button"
@@ -397,6 +402,23 @@
 </div>
 
 @* ═══ MODAL: Photo Lightbox ═══ *@
+<div class="modal fade" id="photoErrorModal" tabindex="-1" aria-labelledby="photoErrorModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title text-danger" id="photoErrorModalLabel">Photo Could Not Be Accepted</h5>
+            </div>
+            <div class="modal-body pt-0">
+                <p id="photoErrorMessage" class="mb-2"></p>
+                <p class="text-muted small mb-0">Choose the original photo file from your device and try again.</p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="photoModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0">
@@ -552,9 +574,10 @@
             }, 1200);
         }
 
-        function wirePhotoSelect(selectId, imageId) {
+        function wirePhotoSelect(selectId, imageId, validationId) {
             const select = document.getElementById(selectId);
             const image = document.getElementById(imageId);
+            const validation = document.getElementById(validationId);
 
             if (!select || !image) {
                 return;
@@ -563,13 +586,14 @@
             select.addEventListener('change', function () {
                 image.src = this.value;
                 image.dataset.photoSrc = this.value;
+                if (validation) validation.textContent = this.options[this.selectedIndex]?.dataset?.photoValidation || '';
             });
         }
 
-        wirePhotoSelect('reportPhotoSelect', 'reportPhotoImg');
-        wirePhotoSelect('beforePhotoSelect', 'beforePhotoImg');
-        wirePhotoSelect('afterPhotoSelect', 'afterPhotoImg');
-        wirePhotoSelect('followUpExistingPhotoSelect', 'followUpExistingPhotoImg');
+        wirePhotoSelect('reportPhotoSelect', 'reportPhotoImg', 'reportPhotoValidation');
+        wirePhotoSelect('beforePhotoSelect', 'beforePhotoImg', 'beforePhotoValidation');
+        wirePhotoSelect('afterPhotoSelect', 'afterPhotoImg', 'afterPhotoValidation');
+        wirePhotoSelect('followUpExistingPhotoSelect', 'followUpExistingPhotoImg', 'followUpExistingPhotoValidation');
 
         const followUpExistingPhotoSelect = document.getElementById('followUpExistingPhotoSelect');
         const followUpExistingPhotoImg = document.getElementById('followUpExistingPhotoImg');
@@ -649,6 +673,8 @@
             const status = document.getElementById('followUpPhotoStatus');
             const previewList = document.getElementById('followUpPhotoPreviewList');
             const hiddenFields = document.getElementById('followUpPhotoHiddenFields');
+            const photoErrorModal = new bootstrap.Modal(document.getElementById('photoErrorModal'));
+            const photoErrorMessage = document.getElementById('photoErrorMessage');
 
             window.followUpUploadState = {
                 activeUploadCount: 0,
@@ -658,6 +684,11 @@
             function setStatus(message, type = 'muted') {
                 status.textContent = message;
                 status.className = `form-text text-${type} mt-1`;
+            }
+
+            function showPhotoError(message) {
+                photoErrorMessage.textContent = message;
+                photoErrorModal.show();
             }
 
             function updateStatus() {
@@ -756,13 +787,16 @@
                 for (const file of files) {
                     const fd = new FormData();
                     fd.append('file', file);
+                    fd.append('purpose', 'report-follow-up');
 
                     try {
                         const res = await fetch('/api/upload/temp', { method: 'POST', body: fd });
                         const data = await readJsonSafe(res);
 
                         if (!res.ok) {
-                            setStatus(data.error || data.message || `Upload failed for ${file.name}.`, 'danger');
+                            const message = data.error || data.message || `Upload failed for ${file.name}.`;
+                            setStatus(message, 'danger');
+                            showPhotoError(message);
                             continue;
                         }
 

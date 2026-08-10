@@ -76,6 +76,23 @@
     </div>
 </div>
 
+<div class="modal fade" id="photoErrorModal" tabindex="-1" aria-labelledby="photoErrorModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title text-danger" id="photoErrorModalLabel">Photo Could Not Be Accepted</h5>
+            </div>
+            <div class="modal-body pt-0">
+                <p id="photoErrorMessage" class="mb-2"></p>
+                <p class="text-muted small mb-0">Choose the original photo file from your device and try again.</p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
@@ -86,6 +103,8 @@
 
             const submitBtn = document.getElementById("submitBtn");
             const formError = document.getElementById("formError");
+            const photoErrorModal = new bootstrap.Modal(document.getElementById("photoErrorModal"));
+            const photoErrorMessage = document.getElementById("photoErrorMessage");
 
             function showFormError(msg) {
                 formError.textContent = msg;
@@ -95,6 +114,11 @@
             function clearErrors() {
                 formError.textContent = "";
                 formError.classList.add("d-none");
+            }
+
+            function showPhotoError(message) {
+                photoErrorMessage.textContent = message;
+                photoErrorModal.show();
             }
 
             function setSubmitState(disabled, text = "Submit") {
@@ -172,16 +196,19 @@
                     setSubmitState(true, "Uploading photo…");
 
                     for (const file of files) {
-                        const fd = new FormData();
-                        fd.append("file", file);
+                            const fd = new FormData();
+                            fd.append("file", file);
+                            fd.append("purpose", "report-submission");
 
                         try {
                             const res = await fetch("/api/upload/temp", { method: "POST", body: fd });
                             const data = await readJsonSafe(res);
 
                             if (!res.ok) {
-                                status.textContent = data.error || data.message || `Upload failed for ${file.name}.`;
+                                const message = data.error || data.message || `Upload failed for ${file.name}.`;
+                                status.textContent = message;
                                 status.className = "form-text text-danger mt-1";
+                                showPhotoError(message);
                                 continue;
                             }
 

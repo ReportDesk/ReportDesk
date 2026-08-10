@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using ReportSystem.Helpers;
 using ReportSystem.Models;
 using ReportSystem.Services;
@@ -15,12 +16,18 @@ namespace ReportSystem.Pages.Admin
         private readonly AppDbContext _db;
         private readonly IR2StorageService _r2;
         private readonly IDataProtectionProvider _dataProtectionProvider;
+        private readonly PhotoValidationOptions _photoValidationOptions;
 
-        public ReportDetailModel(AppDbContext db, IR2StorageService r2, IDataProtectionProvider dataProtectionProvider)
+        public ReportDetailModel(
+            AppDbContext db,
+            IR2StorageService r2,
+            IDataProtectionProvider dataProtectionProvider,
+            IOptions<PhotoValidationOptions> photoValidationOptions)
         {
             _db = db;
             _r2 = r2;
             _dataProtectionProvider = dataProtectionProvider;
+            _photoValidationOptions = photoValidationOptions.Value;
         }
 
         [BindProperty(SupportsGet = true)]
@@ -143,7 +150,13 @@ namespace ReportSystem.Pages.Admin
                     !tempKey.StartsWith($"temp/{ownerToken}/", StringComparison.Ordinal))
                 {
                     ModelState.AddModelError(nameof(FollowUpPhotoTempKeys), "One or more uploaded photos are invalid.");
+                    continue;
                 }
+
+                var isAllowedUnverifiedPhoto = _photoValidationOptions.AllowUnverifiedUploads &&
+                                               await _r2.IsUnverifiedReportPhotoAsync(tempKey, ct);
+                if (!isAllowedUnverifiedPhoto && !await _r2.IsValidatedReportPhotoAsync(tempKey, ct))
+                    ModelState.AddModelError(nameof(FollowUpPhotoTempKeys), "One or more follow-up photos were not validated as recent. Please upload the photo again.");
             }
 
             if (!ModelState.IsValid)
@@ -371,6 +384,8 @@ namespace ReportSystem.Pages.Admin
                 .Where(IsImageAttachment)
                 .ToList();
 
+            await PopulatePhotoValidationMetadataAsync(ReportPhotos, ct);
+
             BeforePhotos = ReportPhotos
                 .Where(a => a.FileName.StartsWith("before_", StringComparison.OrdinalIgnoreCase))
                 .ToList();
@@ -409,6 +424,8 @@ namespace ReportSystem.Pages.Admin
             FollowUpPhotos = FollowUpAttachments
                 .Where(IsImageAttachment)
                 .ToList();
+
+            await PopulatePhotoValidationMetadataAsync(FollowUpPhotos, ct);
 
             return true;
         }
@@ -469,6 +486,33 @@ namespace ReportSystem.Pages.Admin
                    attachment.FilePath.EndsWith(".png", StringComparison.OrdinalIgnoreCase);
         }
 
+        private async Task PopulatePhotoValidationMetadataAsync(
+            List<AttachmentDto> photos,
+            CancellationToken ct)
+        {
+            var validationTasks = photos.Select(async photo =>
+            {
+                var storageKey = TryGetR2KeyFromPublicUrl(photo.FilePath);
+                if (string.IsNullOrWhiteSpace(storageKey))
+                    return;
+
+                var metadata = await _r2.GetPhotoValidationAsync(storageKey, ct);
+                if (metadata is null)
+                    return;
+
+                photo.PhotoValidationLabel = metadata.Method switch
+                {
+                    "exif" when metadata.CapturedAt.HasValue =>
+                        $"Verified by EXIF · captured {metadata.CapturedAt.Value.ToLocalTime():yyyy-MM-dd HH:mm}",
+                    "in-app-camera" => "Verified by in-app camera",
+                    "unverified" => "Unverified development upload",
+                    _ => "Verification status unavailable"
+                };
+            });
+
+            await Task.WhenAll(validationTasks);
+        }
+
         private bool IsAjaxRequest()
         {
             return string.Equals(
@@ -504,5 +548,6 @@ namespace ReportSystem.Pages.Admin
         public string FileName { get; set; } = string.Empty;
         public string FilePath { get; set; } = string.Empty;
         public string FileType { get; set; } = string.Empty;
+        public string PhotoValidationLabel { get; set; } = "Verification status unavailable";
     }
 }

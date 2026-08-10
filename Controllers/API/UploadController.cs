@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
 using ReportSystem.Services;
 
 namespace ReportSystem.Controllers.API;
@@ -9,17 +10,26 @@ namespace ReportSystem.Controllers.API;
 public class UploadController : ControllerBase
 {
     private readonly IFileValidationService _validator;
+    private readonly IPhotoCaptureValidationService _photoCaptureValidator;
+    private readonly IMachinePhotoCaptureSessionService _machinePhotoCaptureSessions;
+    private readonly PhotoValidationOptions _photoValidationOptions;
     private readonly IImageProcessingService _processor;
     private readonly IR2StorageService _r2;
     private readonly ILogger<UploadController> _logger;
 
     public UploadController(
         IFileValidationService validator,
+        IPhotoCaptureValidationService photoCaptureValidator,
+        IMachinePhotoCaptureSessionService machinePhotoCaptureSessions,
+        IOptions<PhotoValidationOptions> photoValidationOptions,
         IImageProcessingService processor,
         IR2StorageService r2,
         ILogger<UploadController> logger)
     {
         _validator = validator;
+        _photoCaptureValidator = photoCaptureValidator;
+        _machinePhotoCaptureSessions = machinePhotoCaptureSessions;
+        _photoValidationOptions = photoValidationOptions.Value;
         _processor = processor;
         _r2 = r2;
         _logger = logger;
@@ -28,7 +38,11 @@ public class UploadController : ControllerBase
     [HttpPost("temp")]
     [EnableRateLimiting("upload")]
     [RequestSizeLimit(10 * 1024 * 1024)]
-    public async Task<IActionResult> UploadTemp(IFormFile file, CancellationToken ct)
+    public async Task<IActionResult> UploadTemp(
+        IFormFile file,
+        [FromForm] string? purpose,
+        [FromForm] string? captureSessionToken,
+        CancellationToken ct)
     {
         if (file is null)
             return BadRequest(new { error = "No file was uploaded." });
@@ -38,6 +52,46 @@ public class UploadController : ControllerBase
         var validation = await _validator.ValidateAsync(file, processingToken);
         if (!validation.IsValid)
             return BadRequest(new { error = validation.Error });
+
+        var isMachinePhoto = string.Equals(purpose, "machine-report", StringComparison.Ordinal);
+        var isReportSubmissionPhoto = isMachinePhoto ||
+                                      string.Equals(purpose, "report-submission", StringComparison.Ordinal) ||
+                                      string.Equals(purpose, "report-follow-up", StringComparison.Ordinal);
+        var isValidatedReportPhoto = false;
+        string? photoValidationMethod = null;
+        DateTimeOffset? photoCapturedAt = null;
+
+        if (isReportSubmissionPhoto)
+        {
+            if (!string.IsNullOrWhiteSpace(captureSessionToken))
+            {
+                if (!_machinePhotoCaptureSessions.TryConsume(captureSessionToken))
+                    return BadRequest(new { error = "The camera capture session expired. Open the camera and take the photo again." });
+
+                isValidatedReportPhoto = true;
+                photoValidationMethod = "in-app-camera";
+                photoCapturedAt = DateTimeOffset.UtcNow;
+                _logger.LogInformation("Machine photo validated with an in-app camera session at {UploadedAt}", DateTimeOffset.UtcNow);
+            }
+            else
+            {
+                var captureValidation = await _photoCaptureValidator.ValidateAsync(file, DateTimeOffset.UtcNow, processingToken);
+                if (!captureValidation.IsValid)
+                {
+                    if (!_photoValidationOptions.AllowUnverifiedUploads || !captureValidation.CanBeUnverified)
+                        return BadRequest(new { error = captureValidation.Error });
+
+                    photoValidationMethod = "unverified";
+                    _logger.LogWarning("Report photo accepted as unverified because development mode permits missing capture metadata.");
+                }
+                else
+                {
+                    isValidatedReportPhoto = true;
+                    photoValidationMethod = "exif";
+                    photoCapturedAt = captureValidation.CapturedAt;
+                }
+            }
+        }
 
         var ownerToken = Guid.NewGuid().ToString("N");
 
@@ -75,7 +129,14 @@ public class UploadController : ControllerBase
         {
             await using (processedStream)
             {
-                tempKey = await _r2.UploadTempAsync(processedStream, file.FileName, ownerToken, ct);
+                tempKey = await _r2.UploadTempAsync(
+                    processedStream,
+                    file.FileName,
+                    ownerToken,
+                    isValidatedReportPhoto,
+                    photoValidationMethod,
+                    photoCapturedAt,
+                    ct);
             }
         }
         catch (Exception ex)
@@ -90,8 +151,18 @@ public class UploadController : ControllerBase
             PreviewUrl: _r2.GetPublicUrl(tempKey),
             FileSizeBytes: fileSizeBytes,
             Width: width,
-            Height: height
+            Height: height,
+            PhotoValidationStatus: photoValidationMethod == "unverified"
+                ? "unverified"
+                : isReportSubmissionPhoto ? "verified" : "not-applicable"
         ));
+    }
+
+    [HttpPost("capture-session")]
+    [EnableRateLimiting("upload")]
+    public IActionResult CreateMachinePhotoCaptureSession()
+    {
+        return Ok(_machinePhotoCaptureSessions.Create());
     }
 
     [HttpDelete("temp")]
@@ -126,7 +197,8 @@ public class UploadController : ControllerBase
         string PreviewUrl,
         long FileSizeBytes,
         int Width,
-        int Height
+        int Height,
+        string PhotoValidationStatus
     );
 
     public record DeleteTempRequest(string TempKey, string UploadOwnerToken);

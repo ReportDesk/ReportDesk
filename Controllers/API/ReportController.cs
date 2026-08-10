@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using ReportSystem.Helpers;
 using ReportSystem.Models;
 using ReportSystem.Services;
@@ -17,17 +18,20 @@ public sealed class ReportController : ControllerBase
     private readonly AppDbContext _context;
     private readonly IR2StorageService _r2;
     private readonly IServiceScopeFactory _serviceScopeFactory;
+    private readonly PhotoValidationOptions _photoValidationOptions;
     private readonly ILogger<ReportController> _logger;
 
     public ReportController(
         AppDbContext context,
         IR2StorageService r2,
         IServiceScopeFactory serviceScopeFactory,
+        IOptions<PhotoValidationOptions> photoValidationOptions,
         ILogger<ReportController> logger)
     {
         _context = context;
         _r2 = r2;
         _serviceScopeFactory = serviceScopeFactory;
+        _photoValidationOptions = photoValidationOptions.Value;
         _logger = logger;
     }
 
@@ -151,6 +155,14 @@ public sealed class ReportController : ControllerBase
 
         if (tempUploads.Any(t => !t.Key.StartsWith($"temp/{t.Token}/", StringComparison.Ordinal)))
             return BadRequest(new { message = "One or more temp uploads do not match the provided upload token." });
+
+        foreach (var (key, _, _) in tempUploads)
+        {
+            var isAllowedUnverifiedPhoto = _photoValidationOptions.AllowUnverifiedUploads &&
+                                           await _r2.IsUnverifiedReportPhotoAsync(key, ct);
+            if (!isAllowedUnverifiedPhoto && !await _r2.IsValidatedReportPhotoAsync(key, ct))
+                return BadRequest(new { message = "One or more report photos were not validated as recent. Please upload the photo again." });
+        }
 
         var now = DateTime.UtcNow;
 

@@ -116,6 +116,9 @@ builder.Services.AddScoped<ReportSystem.Helpers.AppDbConnection>();
 builder.Services.AddHttpClient<IEmailService, EmailService>();
 builder.Services.AddScoped<IR2StorageService, R2StorageService>();
 builder.Services.AddScoped<IFileValidationService, FileValidationService>();
+builder.Services.Configure<PhotoValidationOptions>(builder.Configuration.GetSection("PhotoValidation"));
+builder.Services.AddScoped<IPhotoCaptureValidationService, PhotoCaptureValidationService>();
+builder.Services.AddSingleton<IMachinePhotoCaptureSessionService, MachinePhotoCaptureSessionService>();
 builder.Services.AddScoped<IImageProcessingService, ImageProcessingService>();
 builder.Services.AddHostedService<TempFileCleanupService>();
 

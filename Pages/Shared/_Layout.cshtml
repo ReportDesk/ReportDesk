@@ -234,6 +234,72 @@
     @await RenderSectionAsync("Scripts", required: false)
 
     <script>
+        (() => {
+            function setup(select) {
+                if (select.dataset.searchableReady) return;
+                select.dataset.searchableReady = "true";
+                const placeholder = select.dataset.placeholder || "— Select an option —";
+                const wrapper = document.createElement("div");
+                wrapper.className = "dropdown searchable-select-control";
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = "btn btn-outline-secondary w-100 text-start dropdown-toggle";
+                button.dataset.bsToggle = "dropdown";
+                const menu = document.createElement("div");
+                menu.className = "dropdown-menu w-100 p-2";
+                menu.innerHTML = '<input type="search" class="form-control form-control-sm mb-2" placeholder="Search…" autocomplete="off"><div class="searchable-select-options" style="max-height:220px;overflow-y:auto"></div>';
+                wrapper.append(button, menu);
+                select.classList.add("d-none");
+                select.insertAdjacentElement("afterend", wrapper);
+
+                const search = menu.querySelector("input");
+                const optionList = menu.querySelector(".searchable-select-options");
+                const render = () => {
+                    button.disabled = select.disabled;
+                    button.textContent = select.selectedOptions[0]?.textContent || placeholder;
+                    optionList.innerHTML = "";
+                    [...select.options].filter(option => option.value).forEach(option => {
+                        const item = document.createElement("button");
+                        item.type = "button";
+                        item.className = "dropdown-item text-wrap";
+                        item.textContent = option.textContent;
+                        item.hidden = search.value && !option.textContent.toLowerCase().includes(search.value.toLowerCase());
+                        item.addEventListener("click", () => {
+                            select.value = option.value;
+                            select.dispatchEvent(new Event("change", { bubbles: true }));
+                            bootstrap.Dropdown.getOrCreateInstance(button).hide();
+                        });
+                        optionList.appendChild(item);
+                    });
+                    if (!optionList.children.length) optionList.textContent = "No options available.";
+                };
+                search.addEventListener("input", render);
+                button.addEventListener("shown.bs.dropdown", () => { search.focus(); render(); });
+                select.addEventListener("change", render);
+                new MutationObserver(render).observe(select, { childList: true, attributes: true, subtree: true });
+                render();
+            }
+            async function load(select) {
+                try {
+                    const response = await fetch(select.dataset.source);
+                    const data = await response.json();
+                    if (!response.ok || !Array.isArray(data)) throw new Error();
+                    select.innerHTML = `<option value="">${select.dataset.placeholder || "— Select an option —"}</option>`;
+                    data.forEach(item => select.add(new Option(item.label, item.value)));
+                    select.disabled = false;
+                } catch {
+                    select.innerHTML = '<option value="">List unavailable</option>';
+                    select.disabled = true;
+                }
+            }
+            document.querySelectorAll("select.searchable-select").forEach(select => {
+                setup(select);
+                if (select.dataset.source) load(select);
+            });
+        })();
+    </script>
+
+    <script>
 
         function togglePassword(inputId, btn) {
             const input = document.getElementById(inputId);

@@ -38,8 +38,8 @@
                             </div>
                             <div class="col-12 col-md-6">
                                 <label class="form-label fw-semibold">Pelapor<span class="text-danger">*</span></label>
-                                <input id="inputName" name="name" class="form-control"
-                                       placeholder="Enter your name" />
+                                <select id="inputName" name="name" class="form-select searchable-select"
+                                        data-source="/api/report/reporters" data-placeholder="— Select reporter —" disabled></select>
                                 <span id="errName" class="text-danger small"></span>
                             </div>
 
@@ -50,7 +50,7 @@
                                     Could not load machine list. Please refresh or contact support.
                                 </div>
 
-                                <select id="inputMachine" name="machineId" class="form-select" disabled>
+                                <select id="inputMachine" name="machineId" class="form-select searchable-select" disabled>
                                     <option value="">Loading machines...</option>
                                 </select>
                                 <span id="errMachine" class="text-danger small"></span>
@@ -190,7 +190,8 @@
                 const option = document.createElement("option");
                 option.value = "";
                 option.textContent = text;
-                inputMachine.appendChild(option);
+                    inputMachine.appendChild(option);
+                    inputMachine.dispatchEvent(new Event("change"));
             }
 
             async function loadMachines() {
@@ -216,6 +217,7 @@
                     }
 
                     inputMachine.disabled = false;
+                    inputMachine.dispatchEvent(new Event("change"));
                 } catch {
                     setMachinePlaceholder("Machine list unavailable");
                     inputMachine.disabled = true;

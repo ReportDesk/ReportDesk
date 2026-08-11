@@ -70,6 +70,28 @@ public sealed class ReportController : ControllerBase
         }
     }
 
+    [HttpGet("reporters")]
+    public async Task<IActionResult> GetReporters(CancellationToken ct)
+    {
+        var reporters = await _context.MasterReporters.AsNoTracking()
+            .Where(reporter => reporter.IsActive)
+            .OrderBy(reporter => reporter.ReporterName)
+            .Select(reporter => new { value = reporter.ReporterName, label = reporter.ReporterName })
+            .ToListAsync(ct);
+        return Ok(reporters);
+    }
+
+    [HttpGet("areas")]
+    public async Task<IActionResult> GetAreas(CancellationToken ct)
+    {
+        var areas = await _context.MasterAreas.AsNoTracking()
+            .Where(area => area.IsActive)
+            .OrderBy(area => area.AreaName)
+            .Select(area => new { value = area.AreaName, label = area.AreaName })
+            .ToListAsync(ct);
+        return Ok(areas);
+    }
+
     [EnableRateLimiting("reportSubmit")]
     [HttpPost("submit")]
     public async Task<IActionResult> SubmitReport([FromForm] SubmitReportForm form, CancellationToken ct)
@@ -87,6 +109,16 @@ public sealed class ReportController : ControllerBase
 
         if (form.ReportType == "Machine" && (form.MachineId is null or 0))
             return BadRequest(new { message = "Machine is required for Machine report." });
+
+        var reporterExists = await _context.MasterReporters
+            .AnyAsync(reporter => reporter.IsActive && reporter.ReporterName == form.Name.Trim(), ct);
+        if (!reporterExists)
+            return BadRequest(new { message = "Please select an active reporter from the list." });
+
+        var areaExists = await _context.MasterAreas
+            .AnyAsync(area => area.IsActive && area.AreaName == form.Area.Trim(), ct);
+        if (!areaExists)
+            return BadRequest(new { message = "Please select an active area from the list." });
 
         var tempUploads = new List<(string Key, string Slot, string Token)>();
 
@@ -169,9 +201,9 @@ public sealed class ReportController : ControllerBase
         var report = new MasterReport
         {
             ReportType = form.ReportType,
-            ReportedBy = form.Name,
+            ReportedBy = form.Name.Trim(),
             About = form.About,
-            Area = form.Area,
+            Area = form.Area.Trim(),
             Description = form.Description,
             Description2 = form.Description2 ?? string.Empty,
             Status = "open",

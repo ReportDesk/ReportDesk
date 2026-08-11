@@ -35,6 +35,9 @@ namespace ReportSystem.Models
         [Column("STATUS")]
         public string Status { get; set; } = string.Empty;
 
+        [Column("PRIORITY")]
+        public string Priority { get; set; } = "Normal";
+
         [Column("UPDATED_DATE")]
         public DateTime UpdatedDate { get; set; }
 

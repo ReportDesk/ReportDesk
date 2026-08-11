@@ -76,6 +76,7 @@
                 <div class="d-flex align-items-center gap-2">
                     <i class="bi bi-file-earmark-text text-primary"></i>
                     <span class="fw-semibold">Informasi Laporan</span>
+                    <span class="badge @(Model.ReportPriority == "Critical" ? "bg-danger" : Model.ReportPriority == "High" ? "bg-warning text-dark" : "bg-secondary")">@Model.ReportPriority</span>
                     <span class="badge @statusBadgeClass ms-auto fs-6 px-3 py-2">@statusText</span>
                 </div>
             </div>

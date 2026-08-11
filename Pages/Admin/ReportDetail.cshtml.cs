@@ -48,6 +48,7 @@ namespace ReportSystem.Pages.Admin
         public string ReportDescription { get; private set; } = string.Empty;
         public string ReportDescription2 { get; private set; } = string.Empty;
         public string ReportStatus { get; private set; } = string.Empty;
+        public string ReportPriority { get; private set; } = "Normal";
         public List<AttachmentDto> ReportPhotos { get; private set; } = new();
         public List<AttachmentDto> BeforePhotos { get; private set; } = new();
         public List<AttachmentDto> AfterPhotos { get; private set; } = new();
@@ -367,6 +368,7 @@ namespace ReportSystem.Pages.Admin
             ReportDescription = report.Description;
             ReportDescription2 = report.Description2;
             ReportStatus = report.Status;
+            ReportPriority = report.Priority;
             IsReportClosed = IsClosedStatus(report.Status);
 
             var reportAttachments = attachments

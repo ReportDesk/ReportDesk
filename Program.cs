@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using ReportSystem.Helpers;
 using ReportSystem.Services;
 using Supabase;
+using ReportSystem.Hubs;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -23,6 +24,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 // Add services to the container.
 builder.Services.AddRazorPages();
 builder.Services.AddControllers();
+builder.Services.AddSignalR();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("SupabaseDb")));
@@ -117,9 +119,12 @@ builder.Services.AddHttpClient<IEmailService, EmailService>();
 builder.Services.AddScoped<IR2StorageService, R2StorageService>();
 builder.Services.AddScoped<IFileValidationService, FileValidationService>();
 builder.Services.Configure<PhotoValidationOptions>(builder.Configuration.GetSection("PhotoValidation"));
+builder.Services.Configure<WebPushOptions>(builder.Configuration.GetSection("WebPush"));
 builder.Services.AddScoped<IPhotoCaptureValidationService, PhotoCaptureValidationService>();
 builder.Services.AddSingleton<IMachinePhotoCaptureSessionService, MachinePhotoCaptureSessionService>();
 builder.Services.AddScoped<IImageProcessingService, ImageProcessingService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IWebPushService, WebPushService>();
 builder.Services.AddHostedService<TempFileCleanupService>();
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
@@ -147,5 +152,6 @@ app.UseSession();
 
 app.MapRazorPages();
 app.MapControllers();
+app.MapHub<NotificationHub>("/hubs/notifications");
 
 app.Run();

@@ -1,0 +1,11 @@
+{
+  "name": "Report Desk",
+  "short_name": "Report Desk",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#212529",
+  "icons": [
+    { "src": "/favicon.ico", "sizes": "48x48", "type": "image/x-icon" }
+  ]
+}

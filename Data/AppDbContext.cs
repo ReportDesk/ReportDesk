@@ -12,6 +12,8 @@ public class AppDbContext : DbContext
     public DbSet<MasterReporter> MasterReporters { get; set; }
     public DbSet<MasterArea> MasterAreas { get; set; }
     public DbSet<Attachment> Attachments { get; set; }
+    public DbSet<UserNotification> UserNotifications { get; set; }
+    public DbSet<WebPushSubscription> WebPushSubscriptions { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

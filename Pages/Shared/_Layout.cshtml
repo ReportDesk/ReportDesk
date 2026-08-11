@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/ReportSystem.styles.css" asp-append-version="true" />
+    <link rel="manifest" href="~/manifest.webmanifest" />
 
     <link rel="stylesheet" href="https://cdn.datatables.net/2.3.5/css/dataTables.bootstrap5.min.css" />
     <link rel="stylesheet"
@@ -69,6 +70,21 @@
 
                     @if (HttpContextAccessor.HttpContext!.Session.GetString("UserId") != null)
                     {
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="dropdown">
+                                <button class="btn btn-light position-relative" type="button" id="notificationDropdown"
+                                        data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifications">
+                                    <i class="bi bi-bell-fill"></i>
+                                    <span id="notificationUnreadBadge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none">0</span>
+                                </button>
+                                <div class="dropdown-menu dropdown-menu-end p-0 shadow" aria-labelledby="notificationDropdown" style="width: 360px; max-width: calc(100vw - 2rem);">
+                                    <div class="px-3 py-2 border-bottom fw-semibold">Notifications</div>
+                                    <div id="notificationList" style="max-height: 360px; overflow-y: auto;"></div>
+                                    <div class="border-top p-2">
+                                        <button id="enablePushNotifications" type="button" class="btn btn-sm btn-outline-secondary w-100">Enable device alerts</button>
+                                    </div>
+                                </div>
+                            </div>
                         <div class="dropdown">
                             <button class="btn d-flex align-items-center gap-2 dropdown-toggle"
                                     style="background: none; border: none;"
@@ -115,6 +131,7 @@
                                     </button>
                                 </li>
                             </ul>
+                        </div>
                         </div>
                     }
                     else
@@ -227,6 +244,11 @@
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    @if (HttpContextAccessor.HttpContext!.Session.GetString("UserId") != null)
+    {
+        <script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@8.0.11/dist/browser/signalr.min.js" crossorigin="anonymous"></script>
+        <script src="~/js/notification-center.js" asp-append-version="true"></script>
+    }
 
     <script src="https://cdn.datatables.net/2.3.5/js/dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/2.3.5/js/dataTables.bootstrap5.min.js"></script>

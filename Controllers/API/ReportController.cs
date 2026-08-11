@@ -20,19 +20,22 @@ public sealed class ReportController : ControllerBase
     private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly PhotoValidationOptions _photoValidationOptions;
     private readonly ILogger<ReportController> _logger;
+    private readonly INotificationService _notificationService;
 
     public ReportController(
         AppDbContext context,
         IR2StorageService r2,
         IServiceScopeFactory serviceScopeFactory,
         IOptions<PhotoValidationOptions> photoValidationOptions,
-        ILogger<ReportController> logger)
+        ILogger<ReportController> logger,
+        INotificationService notificationService)
     {
         _context = context;
         _r2 = r2;
         _serviceScopeFactory = serviceScopeFactory;
         _photoValidationOptions = photoValidationOptions.Value;
         _logger = logger;
+        _notificationService = notificationService;
     }
 
     [HttpGet("machines")]
@@ -119,18 +122,39 @@ public sealed class ReportController : ControllerBase
         if (!validTypes.Contains(form.ReportType))
             return BadRequest(new { message = "Invalid report type." });
 
-        if (form.ReportType == "Machine" && (form.MachineId is null or 0))
-            return BadRequest(new { message = "Machine is required for Machine report." });
+        var reportArea = form.Area?.Trim() ?? string.Empty;
+        if (form.ReportType == "Machine")
+        {
+            if (form.MachineId is null or 0)
+                return BadRequest(new { message = "Machine is required for Machine report." });
+
+            var machine = await _context.MasterMachines
+                .AsNoTracking()
+                .Where(item => item.IsActive && item.MachineId == form.MachineId.Value)
+                .Select(item => new { item.MachineArea })
+                .FirstOrDefaultAsync(ct);
+            if (machine is null)
+                return BadRequest(new { message = "Please select an active machine from the list." });
+
+            reportArea = machine.MachineArea?.Trim() ?? string.Empty;
+        }
+
+        var validPriorities = new[] { "Normal", "High", "Critical" };
+        if (!validPriorities.Contains(form.Priority, StringComparer.OrdinalIgnoreCase))
+            return BadRequest(new { message = "Invalid report priority." });
 
         var reporterExists = await _context.MasterReporters
             .AnyAsync(reporter => reporter.IsActive && reporter.ReporterName == form.Name.Trim(), ct);
         if (!reporterExists)
             return BadRequest(new { message = "Please select an active reporter from the list." });
 
-        var areaExists = await _context.MasterAreas
-            .AnyAsync(area => area.IsActive && area.AreaName == form.Area.Trim(), ct);
-        if (!areaExists)
-            return BadRequest(new { message = "Please select an active area from the list." });
+        if (form.ReportType != "Machine")
+        {
+            var areaExists = await _context.MasterAreas
+                .AnyAsync(area => area.IsActive && area.AreaName == reportArea, ct);
+            if (!areaExists)
+                return BadRequest(new { message = "Please select an active area from the list." });
+        }
 
         var tempUploads = new List<(string Key, string Slot, string Token)>();
 
@@ -215,10 +239,11 @@ public sealed class ReportController : ControllerBase
             ReportType = form.ReportType,
             ReportedBy = form.Name.Trim(),
             About = form.About,
-            Area = form.Area.Trim(),
+            Area = reportArea,
             Description = form.Description,
             Description2 = form.Description2 ?? string.Empty,
             Status = "open",
+            Priority = form.Priority,
             SubmissionDate = now,
             UpdatedDate = now,
             UpdatedBy = 0,
@@ -266,6 +291,7 @@ public sealed class ReportController : ControllerBase
             "Report {ReportId} ({Type}) submitted by {Name} with {Count} attachment(s)",
             report.ReportId, report.ReportType, form.Name, attachments.Count);
 
+        await _notificationService.NotifyNewReportAsync(report, ct);
         QueueReportNotifications(report.ReportId, Request.Scheme, Request.Host.Value);
 
         return Ok(new
@@ -417,6 +443,7 @@ public sealed class ReportController : ControllerBase
         public string? About { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public string? Description2 { get; set; } = string.Empty;
+        public string Priority { get; set; } = "Normal";
         public int? MachineId { get; set; }
         public List<string> PhotoTempKeys { get; set; } = new();
         public List<string> PhotoUploadOwnerTokens { get; set; } = new();

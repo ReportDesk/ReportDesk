@@ -17,6 +17,18 @@ namespace ReportSystem.Pages.Admin
 
         public List<MachineRowViewModel> Machines { get; private set; } = new();
 
+        [BindProperty(SupportsGet = true)]
+        public string MachineName { get; set; } = string.Empty;
+
+        [BindProperty(SupportsGet = true)]
+        public string Area { get; set; } = string.Empty;
+
+        [BindProperty(SupportsGet = true)]
+        public string Type { get; set; } = string.Empty;
+
+        [BindProperty(SupportsGet = true)]
+        public List<string> Status { get; set; } = [];
+
         [BindProperty]
         public MachineFormInput Input { get; set; } = new();
 
@@ -85,8 +97,31 @@ namespace ReportSystem.Pages.Admin
 
         private async Task LoadMachinesAsync(CancellationToken ct)
         {
-            Machines = await _db.MasterMachines
+            var query = _db.MasterMachines
                 .AsNoTracking()
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(MachineName))
+                query = query.Where(m => m.MachineName.Contains(MachineName.Trim()));
+
+            if (!string.IsNullOrWhiteSpace(Area))
+                query = query.Where(m => m.MachineArea.Contains(Area.Trim()));
+
+            if (!string.IsNullOrWhiteSpace(Type))
+                query = query.Where(m => m.MachineType.Contains(Type.Trim()));
+
+            var normalizedStatuses = (Status ?? [])
+                .Where(status => !string.IsNullOrWhiteSpace(status))
+                .Select(status => status.Trim().ToLowerInvariant())
+                .ToList();
+
+            if (normalizedStatuses.Count > 0 && normalizedStatuses.Count < 2)
+            {
+                var isActive = normalizedStatuses.Contains("active");
+                query = query.Where(m => m.IsActive == isActive);
+            }
+
+            Machines = await query
                 .OrderBy(m => m.MachineName)
                 .Select(m => new MachineRowViewModel
                 {
@@ -97,6 +132,12 @@ namespace ReportSystem.Pages.Admin
                     IsActive = m.IsActive
                 })
                 .ToListAsync(ct);
+        }
+
+        public bool IsStatusSelected(string status)
+        {
+            return (Status ?? [])
+                .Any(value => string.Equals(value?.Trim(), status, StringComparison.OrdinalIgnoreCase));
         }
 
         public async Task<IActionResult> OnPostDeleteAsync(int machineId, CancellationToken ct)

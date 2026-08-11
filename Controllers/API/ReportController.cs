@@ -76,7 +76,13 @@ public sealed class ReportController : ControllerBase
         var reporters = await _context.MasterReporters.AsNoTracking()
             .Where(reporter => reporter.IsActive)
             .OrderBy(reporter => reporter.ReporterName)
-            .Select(reporter => new { value = reporter.ReporterName, label = reporter.ReporterName })
+            .Select(reporter => new
+            {
+                value = reporter.ReporterName,
+                label = string.IsNullOrWhiteSpace(reporter.Fullname)
+                    ? reporter.ReporterName
+                    : $"{reporter.ReporterName} - {reporter.Fullname}"
+            })
             .ToListAsync(ct);
         return Ok(reporters);
     }
@@ -87,7 +93,13 @@ public sealed class ReportController : ControllerBase
         var areas = await _context.MasterAreas.AsNoTracking()
             .Where(area => area.IsActive)
             .OrderBy(area => area.AreaName)
-            .Select(area => new { value = area.AreaName, label = area.AreaName })
+            .Select(area => new
+            {
+                value = area.AreaName,
+                label = string.IsNullOrWhiteSpace(area.Building)
+                    ? area.AreaName
+                    : $"{area.AreaName} - {area.Building}"
+            })
             .ToListAsync(ct);
         return Ok(areas);
     }

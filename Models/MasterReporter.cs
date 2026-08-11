@@ -14,6 +14,10 @@ public sealed class MasterReporter
     [Column("REPORTER_NAME")]
     public string ReporterName { get; set; } = string.Empty;
 
+    [Required]
+    [Column("FULLNAME")]
+    public string Fullname { get; set; } = string.Empty;
+
     [Column("CREATED_DATE")]
     public DateTime CreatedDate { get; set; }
 

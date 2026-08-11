@@ -14,6 +14,10 @@ public sealed class MasterArea
     [Column("AREA_NAME")]
     public string AreaName { get; set; } = string.Empty;
 
+    [Required]
+    [Column("BUILDING")]
+    public string Building { get; set; } = string.Empty;
+
     [Column("CREATED_DATE")]
     public DateTime CreatedDate { get; set; }
 

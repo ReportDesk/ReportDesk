@@ -19,20 +19,21 @@ public sealed class MasterReporterModel(AppDbContext db) : PageModel
         if (!IsAllowed()) return RedirectToPage("/AccessDenied");
         if (!ModelState.IsValid) { await LoadAsync(ct); return Page(); }
         var name = Input.ReporterName.Trim();
+        var fullname = Input.Fullname.Trim();
         if (await db.MasterReporters.AnyAsync(x => x.ReporterName == name && (!EditId.HasValue || x.ReporterId != EditId), ct)) { ModelState.AddModelError("Input.ReporterName", "A reporter with this name already exists."); await LoadAsync(ct); return Page(); }
         if (EditId.HasValue)
         {
             var reporter = await db.MasterReporters.FindAsync([EditId.Value], ct);
             if (reporter is null) return NotFound();
-            reporter.ReporterName = name; reporter.IsActive = Input.IsActive; SuccessMessage = "Reporter updated.";
+            reporter.ReporterName = name; reporter.Fullname = fullname; reporter.IsActive = Input.IsActive; SuccessMessage = "Reporter updated.";
         }
-        else { db.MasterReporters.Add(new MasterReporter { ReporterName = name, IsActive = Input.IsActive, CreatedDate = DateTime.UtcNow, CreatedBy = CurrentUserId() }); SuccessMessage = "Reporter added."; }
+        else { db.MasterReporters.Add(new MasterReporter { ReporterName = name, Fullname = fullname, IsActive = Input.IsActive, CreatedDate = DateTime.UtcNow, CreatedBy = CurrentUserId() }); SuccessMessage = "Reporter added."; }
         await db.SaveChangesAsync(ct); return RedirectToPage();
     }
     public async Task<IActionResult> OnPostDeleteAsync(int reporterId, CancellationToken ct) { if (!IsAllowed()) return RedirectToPage("/AccessDenied"); var reporter = await db.MasterReporters.FindAsync([reporterId], ct); if (reporter is not null) { reporter.IsActive = false; await db.SaveChangesAsync(ct); } SuccessMessage = "Reporter deactivated."; return RedirectToPage(); }
-    private async Task LoadAsync(CancellationToken ct) => Reporters = await db.MasterReporters.AsNoTracking().OrderBy(x => x.ReporterName).Select(x => new ReporterRowViewModel { ReporterId = x.ReporterId, ReporterName = x.ReporterName, IsActive = x.IsActive }).ToListAsync(ct);
+    private async Task LoadAsync(CancellationToken ct) => Reporters = await db.MasterReporters.AsNoTracking().OrderBy(x => x.ReporterName).Select(x => new ReporterRowViewModel { ReporterId = x.ReporterId, ReporterName = x.ReporterName, Fullname = x.Fullname, IsActive = x.IsActive }).ToListAsync(ct);
     private int CurrentUserId() => int.TryParse(HttpContext.Session.GetString("UserId"), out var id) ? id : 0;
     private bool IsAllowed() => string.Equals(HttpContext.Session.GetString("Role"), "Admin", StringComparison.OrdinalIgnoreCase);
-    public sealed class ReporterRowViewModel { public int ReporterId { get; set; } public string ReporterName { get; set; } = string.Empty; public bool IsActive { get; set; } }
-    public sealed class ReporterFormInput { [Required] public string ReporterName { get; set; } = string.Empty; public bool IsActive { get; set; } = true; }
+    public sealed class ReporterRowViewModel { public int ReporterId { get; set; } public string ReporterName { get; set; } = string.Empty; public string Fullname { get; set; } = string.Empty; public bool IsActive { get; set; } }
+    public sealed class ReporterFormInput { [Required] public string ReporterName { get; set; } = string.Empty; [Required] public string Fullname { get; set; } = string.Empty; public bool IsActive { get; set; } = true; }
 }

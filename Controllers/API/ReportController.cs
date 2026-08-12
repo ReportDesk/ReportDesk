@@ -148,7 +148,7 @@ public sealed class ReportController : ControllerBase
         if (!reporterExists)
             return BadRequest(new { message = "Please select an active reporter from the list." });
 
-        if (form.ReportType != "Machine")
+        if (form.ReportType != "Machine" && form.ReportType != "Suggestion")
         {
             var areaExists = await _context.MasterAreas
                 .AnyAsync(area => area.IsActive && area.AreaName == reportArea, ct);

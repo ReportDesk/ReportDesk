@@ -86,6 +86,57 @@
         </div>
     }
 
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-xl-2">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Total Reports</div>
+                    <div class="fs-3 fw-bold">@Model.TotalCount</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-2">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Open</div>
+                    <div class="fs-3 fw-bold text-success">@Model.OpenCount</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-2">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small">On Progress</div>
+                    <div class="fs-3 fw-bold text-warning">@Model.InProgressCount</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-2">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Done / Closed</div>
+                    <div class="fs-3 fw-bold text-primary">@Model.DoneCount</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-2">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Duplicates</div>
+                    <div class="fs-3 fw-bold text-danger">@Model.DuplicateCount</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-2">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Avg. Resolution</div>
+                    <div class="fs-3 fw-bold">@(Model.AverageResolutionDays == 0 ? "—" : $"{Model.AverageResolutionDays:0.0}d")</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div>
         <div class="py-2">
             <form method="get">
@@ -213,57 +264,6 @@
 
                 </div>
             </form>
-        </div>
-    </div>
-
-    <div class="row g-3 mb-4">
-        <div class="col-6 col-xl-2">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body">
-                    <div class="text-muted small">Total Reports</div>
-                    <div class="fs-3 fw-bold">@Model.TotalCount</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-xl-2">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body">
-                    <div class="text-muted small">Open</div>
-                    <div class="fs-3 fw-bold text-success">@Model.OpenCount</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-xl-2">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body">
-                    <div class="text-muted small">On Progress</div>
-                    <div class="fs-3 fw-bold text-warning">@Model.InProgressCount</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-xl-2">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body">
-                    <div class="text-muted small">Done / Closed</div>
-                    <div class="fs-3 fw-bold text-primary">@Model.DoneCount</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-xl-2">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body">
-                    <div class="text-muted small">Duplicates</div>
-                    <div class="fs-3 fw-bold text-danger">@Model.DuplicateCount</div>
-                </div>
-            </div>
-        </div>
-        <div class="col-6 col-xl-2">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body">
-                    <div class="text-muted small">Avg. Resolution</div>
-                    <div class="fs-3 fw-bold">@(Model.AverageResolutionDays == 0 ? "—" : $"{Model.AverageResolutionDays:0.0}d")</div>
-                </div>
-            </div>
         </div>
     </div>
 

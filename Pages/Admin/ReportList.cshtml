@@ -86,6 +86,57 @@
         </div>
     }
 
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-xl-2">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Total Reports</div>
+                    <div class="fs-3 fw-bold">@Model.TotalCount</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-2">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Open</div>
+                    <div class="fs-3 fw-bold text-success">@Model.OpenCount</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-2">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small">On Progress</div>
+                    <div class="fs-3 fw-bold text-warning">@Model.InProgressCount</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-2">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Done / Closed</div>
+                    <div class="fs-3 fw-bold text-primary">@Model.DoneCount</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-2">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Duplicates</div>
+                    <div class="fs-3 fw-bold text-danger">@Model.DuplicateCount</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-xl-2">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Avg. Resolution</div>
+                    <div class="fs-3 fw-bold">@(Model.AverageResolutionDays == 0 ? "—" : $"{Model.AverageResolutionDays:0.0}d")</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div>
         <div class="py-2">
             <form method="get">
@@ -115,22 +166,44 @@
                                style="min-width:140px" />
                     </div>
 
-                    @if (Model.IsMachineType)
-                    {
-                        <div>
-                            <label class="form-label fw-semibold small mb-1" for="machineId">
-                                Machine
-                            </label>
+                    <div>
+                        <label class="form-label fw-semibold small mb-1" for="area">
+                            Area
+                        </label>
+                        <select id="area"
+                                asp-for="Area"
+                                asp-items="Model.AreaOptions"
+                                class="form-select form-select-sm"
+                                style="min-width:160px">
+                            <option value="">All Areas</option>
+                        </select>
+                    </div>
 
-                            <select id="machineId"
-                                    asp-for="MachineId"
-                                    asp-items="Model.MachineOptions"
-                                    class="form-select form-select-sm"
-                                    style="min-width:180px">
-                                <option value="">All Machines</option>
-                            </select>
-                        </div>
-                    }
+                    <div>
+                        <label class="form-label fw-semibold small mb-1" for="reporter">
+                            Reporter
+                        </label>
+                        <select id="reporter"
+                                asp-for="Reporter"
+                                asp-items="Model.ReporterOptions"
+                                class="form-select form-select-sm"
+                                style="min-width:170px">
+                            <option value="">All Reporters</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="form-label fw-semibold small mb-1" for="machineId">
+                            Machine
+                        </label>
+                        <select id="machineId"
+                                asp-for="MachineId"
+                                asp-items="Model.MachineOptions"
+                                class="form-select form-select-sm"
+                                style="min-width:180px">
+                            <option value="">All Machines</option>
+                        </select>
+                    </div>
 
                     <div>
                         <label class="form-label fw-semibold small mb-1 d-block">
@@ -138,7 +211,7 @@
                         </label>
 
                         <div class="d-flex flex-wrap align-items-center mobile-status-group gap-3">
-                            @foreach (var s in new[] { "open", "on progress", "close" })
+                            @foreach (var s in new[] { "open", "on progress", "close", "done", "duplicate" })
                             {
                                 var labelId = "status_" + s.Replace(" ", "");
 
@@ -147,6 +220,8 @@
                                     "open" => "Open",
                                     "on progress" => "On Progress",
                                     "close" => "Close",
+                                    "done" => "Done",
+                                    "duplicate" => "Duplicate",
                                     _ => s
                                 };
 
@@ -308,6 +383,8 @@
                     }
                     <input type="hidden" name="handler" value="Export" />
                     <input type="hidden" name="ReportType" value="@Model.ReportType" />
+                    <input type="hidden" name="Area" value="@Model.Area" />
+                    <input type="hidden" name="Reporter" value="@Model.Reporter" />
 
                     <div class="row g-3">
                         <div class="col-12 col-md-6">
@@ -332,25 +409,22 @@
                                    class="form-control form-control-sm" />
                         </div>
 
-                        @if (Model.IsMachineType)
-                        {
-                            <div class="col-12">
-                                <label class="form-label fw-semibold small mb-1" for="exportMachineId">
-                                    Machine
-                                </label>
-                                <select id="exportMachineId"
-                                        name="MachineId"
-                                        class="form-select form-select-sm">
-                                    <option value="">All Machines</option>
-                                    @foreach (var machine in Model.MachineOptions)
-                                    {
-                                        <option value="@machine.Value" selected="@(machine.Value == Model.MachineId?.ToString())">
-                                            @machine.Text
-                                        </option>
-                                    }
-                                </select>
-                            </div>
-                        }
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small mb-1" for="exportMachineId">
+                                Machine
+                            </label>
+                            <select id="exportMachineId"
+                                    name="MachineId"
+                                    class="form-select form-select-sm">
+                                <option value="">All Machines</option>
+                                @foreach (var machine in Model.MachineOptions)
+                                {
+                                    <option value="@machine.Value" selected="@(machine.Value == Model.MachineId?.ToString())">
+                                        @machine.Text
+                                    </option>
+                                }
+                            </select>
+                        </div>
 
                         <div class="col-12">
                             <label class="form-label fw-semibold small mb-1 d-block">
@@ -358,7 +432,7 @@
                             </label>
 
                             <div class="d-flex flex-wrap align-items-center gap-3">
-                                @foreach (var s in new[] { "open", "on progress", "close" })
+                                    @foreach (var s in new[] { "open", "on progress", "close", "done", "duplicate" })
                                 {
                                     var exportLabelId = "export_status_" + s.Replace(" ", "");
                                     var labelText = s switch
@@ -366,6 +440,8 @@
                                         "open" => "Open",
                                         "on progress" => "On Progress",
                                         "close" => "Close",
+                                        "done" => "Done",
+                                        "duplicate" => "Duplicate",
                                         _ => s
                                     };
 

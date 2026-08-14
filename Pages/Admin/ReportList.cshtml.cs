@@ -25,11 +25,14 @@ namespace ReportSystem.Pages.Admin
         [BindProperty(SupportsGet = true)] public string ReportType { get; set; } = string.Empty;
         [BindProperty(SupportsGet = true)] public string FromDate { get; set; } = string.Empty;
         [BindProperty(SupportsGet = true)] public string ToDate { get; set; } = string.Empty;
-        [BindProperty(SupportsGet = true)] public List<string> Status { get; set; } = ["open", "on progress", "close"];
+        [BindProperty(SupportsGet = true)] public List<string> Status { get; set; } = ["open", "on progress", "close", "done", "duplicate"];
+        [BindProperty(SupportsGet = true)] public string Area { get; set; } = string.Empty;
+        [BindProperty(SupportsGet = true)] public string Reporter { get; set; } = string.Empty;
 
-        // Machine-only filter
         [BindProperty(SupportsGet = true)] public int? MachineId { get; set; }
         public List<SelectListItem> MachineOptions { get; set; } = [];
+        public List<SelectListItem> AreaOptions { get; set; } = [];
+        public List<SelectListItem> ReporterOptions { get; set; } = [];
 
         public bool IsMachineType => ReportType == "Machine";
         public bool IsSuggestionType => ReportType == "Suggestion";
@@ -54,6 +57,12 @@ namespace ReportSystem.Pages.Admin
         public List<ReportRow> ReportRows { get; set; } = [];
         public string LoadError { get; set; } = string.Empty;
         [TempData] public string? ExportError { get; set; }
+        public int TotalCount { get; private set; }
+        public int OpenCount { get; private set; }
+        public int InProgressCount { get; private set; }
+        public int DoneCount { get; private set; }
+        public int DuplicateCount { get; private set; }
+        public double AverageResolutionDays { get; private set; }
 
         public async Task<IActionResult> OnGetAsync(CancellationToken ct)
         {
@@ -66,10 +75,13 @@ namespace ReportSystem.Pages.Admin
             try
             {
                 await LoadMachineOptionsAsync(ct);
+                await LoadFilterOptionsAsync(ct);
 
                 var reports = await BuildFilteredReportQuery()
                     .OrderByDescending(r => r.SubmissionDate)
                     .ToListAsync(ct);
+
+                CalculateStatistics(reports);
 
                 ReportRows = reports.Select(r => new ReportRow
                 {
@@ -113,7 +125,7 @@ namespace ReportSystem.Pages.Admin
             if (validationError is not null)
             {
                 TempData["ExportError"] = validationError;
-                return RedirectToPage(new { ReportType, FromDate, ToDate, Status, MachineId });
+                return RedirectToPage(new { ReportType, FromDate, ToDate, Status, MachineId, Area, Reporter });
             }
 
             var reports = await BuildFilteredReportQuery()
@@ -170,11 +182,9 @@ namespace ReportSystem.Pages.Admin
 
         private async Task LoadMachineOptionsAsync(CancellationToken ct)
         {
-            if (!IsMachineType)
-                return;
-
             var machines = await _db.MasterMachines
                 .AsNoTracking()
+                .Where(m => m.IsActive)
                 .OrderBy(m => m.MachineName)
                 .ToListAsync(ct);
 
@@ -185,10 +195,53 @@ namespace ReportSystem.Pages.Admin
             }).ToList();
         }
 
+        private async Task LoadFilterOptionsAsync(CancellationToken ct)
+        {
+            var areas = await _db.MasterAreas
+                .AsNoTracking()
+                .Where(a => a.IsActive)
+                .OrderBy(a => a.AreaName)
+                .Select(a => a.AreaName)
+                .ToListAsync(ct);
+
+            AreaOptions = areas
+                .Where(a => !string.IsNullOrWhiteSpace(a))
+                .Select(a => new SelectListItem { Value = a, Text = a })
+                .ToList();
+
+            var reporters = await _db.MasterReporters
+                .AsNoTracking()
+                .Where(r => r.IsActive)
+                .OrderBy(r => r.ReporterName)
+                .Select(r => r.ReporterName)
+                .ToListAsync(ct);
+
+            ReporterOptions = reporters
+                .Where(r => !string.IsNullOrWhiteSpace(r))
+                .Select(r => new SelectListItem { Value = r, Text = r })
+                .ToList();
+        }
+
+        private void CalculateStatistics(List<MasterReport> reports)
+        {
+            TotalCount = reports.Count;
+            OpenCount = reports.Count(r => NormalizeStatus(r.Status) == "open");
+            InProgressCount = reports.Count(r => NormalizeStatus(r.Status) == "on progress");
+            DoneCount = reports.Count(r => new[] { "close", "closed", "done" }.Contains(NormalizeStatus(r.Status)));
+            DuplicateCount = reports.Count(r => NormalizeStatus(r.Status) == "duplicate");
+
+            var resolvedReports = reports
+                .Where(r => new[] { "close", "closed", "done" }.Contains(NormalizeStatus(r.Status)) && r.UpdatedDate >= r.SubmissionDate)
+                .Select(r => (r.UpdatedDate - r.SubmissionDate).TotalDays)
+                .ToList();
+
+            AverageResolutionDays = resolvedReports.Count == 0 ? 0 : resolvedReports.Average();
+        }
+
         private string? ValidateExportFilters()
         {
             var validTypes = new[] { "Machine", "NearMiss", "Suggestion", "Kaizen" };
-            if (!validTypes.Contains(ReportType))
+            if (!string.IsNullOrWhiteSpace(ReportType) && !validTypes.Contains(ReportType))
                 return "Invalid report type.";
 
             DateTime? from = null, to = null;
@@ -210,7 +263,7 @@ namespace ReportSystem.Pages.Admin
             if (from.HasValue && to.HasValue && from.Value.Date > to.Value.Date)
                 return "From Date cannot be later than To Date.";
 
-            var validStatuses = new[] { "open", "on progress", "close" };
+            var validStatuses = new[] { "open", "on progress", "close", "done", "duplicate" };
             var normalizedStatuses = (Status ?? new List<string>())
                 .Where(s => !string.IsNullOrWhiteSpace(s))
                 .Select(s => s.Trim().ToLower())
@@ -219,8 +272,8 @@ namespace ReportSystem.Pages.Admin
             if (normalizedStatuses.Any(s => !validStatuses.Contains(s)))
                 return "Invalid status filter.";
 
-            if (IsMachineType && MachineId.HasValue &&
-                !_db.MasterMachines.Any(m => m.MachineId == MachineId.Value))
+            if (MachineId.HasValue &&
+                !_db.MasterMachines.Any(m => m.MachineId == MachineId.Value && m.IsActive))
                 return "Invalid machine selected.";
 
             return null;
@@ -236,6 +289,12 @@ namespace ReportSystem.Pages.Admin
             if (!string.IsNullOrWhiteSpace(ReportType))
                 query = query.Where(r => r.ReportType == ReportType);
 
+            if (!string.IsNullOrWhiteSpace(Area))
+                query = query.Where(r => r.Area == Area);
+
+            if (!string.IsNullOrWhiteSpace(Reporter))
+                query = query.Where(r => r.ReportedBy == Reporter);
+
             if (DateTime.TryParse(FromDate, out var fromDate))
                 query = query.Where(r => r.SubmissionDate >= fromDate);
 
@@ -250,7 +309,7 @@ namespace ReportSystem.Pages.Admin
             if (normalizedStatuses.Count > 0)
                 query = query.Where(r => normalizedStatuses.Contains(r.Status.ToLower()));
 
-            if (IsMachineType && MachineId.HasValue)
+            if (MachineId.HasValue)
                 query = query.Where(r => r.MachineId == MachineId.Value);
 
             return query;
@@ -535,6 +594,11 @@ namespace ReportSystem.Pages.Admin
                 "kaizen" => "Kaizen",
                 _ => reportType ?? string.Empty
             };
+        }
+
+        private static string NormalizeStatus(string? status)
+        {
+            return status?.Trim().ToLowerInvariant() ?? string.Empty;
         }
 
         public class ReportRow

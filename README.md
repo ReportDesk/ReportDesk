@@ -110,3 +110,14 @@ ReportSystem/
 - Sessions expire after **8 hours** of inactivity; auth cookies after **24 hours**.
 - A background service (`TempFileCleanupService`) automatically cleans up temporary files.
 - R2 requires `ForcePathStyle = true` and `AuthenticationRegion = "auto"`.
+
+## License
+
+Report Desk is proprietary software. All rights are reserved by the copyright holder.
+
+The source code is publicly available for viewing, but permission is required before reusing, copying, modifying, or redistributing the project's original materials, except where applicable law or the repository hosting platform's terms provide otherwise.
+
+See the [LICENSE](./LICENSE) file for the full terms.
+
+For permission to use this project, please contact the copyright holder.
+
